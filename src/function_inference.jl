@@ -82,16 +82,22 @@ function functionName(call_expr, line = 0)
   call_expr.args[1]::Symbol
 end
 
-function argumentTypes(call_expr, line = 0)
+function arguments(call_expr, line = 0)
   if call_expr.head != :call
     throw("Malformed function declaration, $line")
   end
+  call_expr = copy(call_expr)
+  call_expr.head = :tuple
+  shift!(call_expr.args)
+  return call_expr
+end
+
+function argumentTypes(call_expr, line = 0)
+  args = arguments(call_expr)
   fargtypes = Array{Symbol, 1}()
+  exprResultType()
   for entry in call_expr.args[2:end]
-    if !(typeof(entry) <: Expr) || entry.head != :(::)
-      throw("Must explicitly annotate argument types, $line")
-    end
-    push!(fargtypes, entry.args[2])
+    push!(exprResultType(entry))
   end
   return fargtypes
 end

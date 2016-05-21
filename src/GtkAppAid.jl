@@ -4,7 +4,11 @@ module GtkAppAid
 
 using Gtk
 
-export GtkBuilderHelper
+export @GtkAidBuild
+
+include("function_inference.jl")
+
+# TODO add bindings for g_application_quit
 
 function addCallbackSymbols(built, pairs)
   flat_pairs = Union{Symbol, Ptr{Void}}[]
@@ -22,7 +26,6 @@ function addCallbackSymbols(built, pairs)
       flat_pairs...)
 end
 
-include("function_inference.jl")
 
 """
 This macro is meant to make using glade with Julia as easy as working with 
@@ -33,13 +36,34 @@ not cleanly.
 Type annotations are necessary for this case as the macro needs to compile the
 functions to cfunctions with minimal information.
 """
-macro GtkBuilderHelper(args...)
+macro GtkAidBuild(args...)
   if length(args) < 2
     throw("ERROR: Requires at least two arguments")
   end
 
+  directives = Set{Symbol}()
+  for directive in args[1:end - 2]
+    if typeof(directive) <: Symbol
+      # A symbol directive
+      push!(directives, directive)
+    elseif typeof(directive) <: Expr
+      # An expression directive
+      if directive.head == :call
+        if directive.args[1] == :userdata
+          # Creates a tuple from the arguments
+          # and uses that as the userinfo argument
+          userdata_tuple = arguments(directive)
+          userdata_tuple_type = argumentTypes(directive)
+          userdata_tuple_type.head = :curly
+          unshift!(userdata_tuple_type.args, :Tuple)
+          push!(directives, :userdata)
+        end
+      end
+    else
+      # A different sort of directive
+    end
+  end
   # Create a set of directives
-  directives = Set([directive::Symbol for directive in args[1:end - 2]])
 
   # Analogous to function declarations of a C header file
   callback_declarations = Dict{Symbol, FunctionDeclaration}();
@@ -76,9 +100,20 @@ macro GtkBuilderHelper(args...)
     end
   end
 
-  return quote
+  # Whether to make the block accessible elsewhere
+  if !(:sanitize in directives)
+    block = esc(block)
+  end
+
+  # Needs to do all of this in the parent scope
+  return quote 
+    # Use sanitization for TypeInfo
+    typealias UserInfo $userinfo
+    # Prevent sanitization for the function names
+    # First needs to resolve the original block in the parent scope
     built = @GtkBuilder(filename=$filename)
-    
+    $block
+    built
   end
 
 end
