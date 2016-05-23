@@ -36,8 +36,7 @@ function exprResultType(expr)
       # Blocks evaluate to their final argument
       result = exprResultType(expr.args[end])
     end
-    # Should be able to record the inferred type
-    expr.typ = eval(result)
+    # expr.typ = eval(result)
     return result
   else
     # constants aren't too hard
@@ -94,18 +93,17 @@ end
 
 function argumentTypes(call_expr, line = 0)
   args = arguments(call_expr)
-  fargtypes = Array{Symbol, 1}()
-  exprResultType()
+  fargtypes = Array{Union{Expr, Symbol}, 1}()
   for entry in call_expr.args[2:end]
-    push!(exprResultType(entry))
+    push!(fargtypes, exprResultType(entry))
   end
   return fargtypes
 end
 
 type FunctionDeclaration
   function_name::Symbol
-  return_type::Symbol
-  argument_types::Array{Symbol, 1}
+  return_type::Union{Symbol, Expr}
+  argument_types::Array{Union{Expr, Symbol}, 1}
   function FunctionDeclaration(function_expr::Expr)
     if function_expr.head != :function && function_expr.head != :(==)
       throw("ERROR: getting declaration of non-function expression")

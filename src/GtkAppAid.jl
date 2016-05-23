@@ -41,6 +41,7 @@ macro GtkAidBuild(args...)
     throw("ERROR: Requires at least two arguments")
   end
 
+  userdata_call = :(userdata())
   directives = Set{Symbol}()
   for directive in args[1:end - 2]
     if typeof(directive) <: Symbol
@@ -52,18 +53,22 @@ macro GtkAidBuild(args...)
         if directive.args[1] == :userdata
           # Creates a tuple from the arguments
           # and uses that as the userinfo argument
-          userdata_tuple = arguments(directive)
-          userdata_tuple_type = argumentTypes(directive)
-          userdata_tuple_type.head = :curly
-          unshift!(userdata_tuple_type.args, :Tuple)
-          push!(directives, :userdata)
+          userdata_call = directive
+        end
+
+        if directive.args[1] == :application_window
+          directive.args[2]
+          directive.args[3]
         end
       end
     else
       # A different sort of directive
     end
   end
-  # Create a set of directives
+
+  # Determine the tuple type
+  userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(userdata_call)...)
+  push!(directives, :userdata)
 
   # Analogous to function declarations of a C header file
   callback_declarations = Dict{Symbol, FunctionDeclaration}();
@@ -80,20 +85,25 @@ macro GtkAidBuild(args...)
 
   line = 0
   for entry in block.args
+
     if typeof(entry) <: Expr
       if entry.head == :line
         line = entry.args[1]
       end
+
       if entry.head == :function
+
+        # A big spot where things can go wrong
         fdecl = FunctionDeclaration(entry)
-        if fdecl.function_name in callback_declarations
+
+        if fdecl.function_name in keys(callback_declarations)
           throw("Function names must be unique, $line")
         end
         if :verbose in directives
           println("Adding function: $(fdecl.function_name)")
           println("Return Type: $(fdecl.return_type)")
           for fargtype in fdecl.argument_types
-            println("Argument Type: $fargtypes")
+            println("Argument Type: $fargtype")
           end
         end
       end
@@ -105,16 +115,20 @@ macro GtkAidBuild(args...)
     block = esc(block)
   end
 
+  println("BEFORE QUOTE")
   # Needs to do all of this in the parent scope
-  return quote 
+  ret = quote 
     # Use sanitization for TypeInfo
-    typealias UserInfo $userinfo
+    typealias UserInfo $userdata_tuple_type
     # Prevent sanitization for the function names
     # First needs to resolve the original block in the parent scope
     built = @GtkBuilder(filename=$filename)
     $block
     built
   end
+
+  println("MACRO COMPLETES")
+  return ret
 
 end
 

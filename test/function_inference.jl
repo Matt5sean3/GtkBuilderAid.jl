@@ -8,7 +8,7 @@ macro test_macro(args...)
   # mostly, test that the return and argument types are correctly inferred
   function_name = args[1]
   return_type = args[2]
-  argument_types = [arg::Symbol for arg in args[3:end - 1]]
+  argument_types = [arg::Union{Symbol, Expr} for arg in args[3:end - 1]]
   function_expr = args[end]
   declaration = FunctionDeclaration(function_expr)
   @test declaration.function_name == function_name
@@ -88,6 +88,14 @@ end
   ret::Int
 end
 @test factorial2(5) == 2 * 3 * 4 * 5
+
+# Test decoding the functions we actually use
+@test_macro close_window Void Ptr{Gtk.GLib.GObject} Ptr{Gtk.GLib.GObject} function close_window(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    window::Ptr{Gtk.GLib.GObject})
+  destroy(window)
+  nothing::Void
+end
 
 # Inference on this is much harder
 # The *= method could be overriden
