@@ -1,4 +1,17 @@
 
+function replaceSymbol!(expr::Expr, symbol::Symbol, replacement)
+  # recursive symbol replacement
+  for (i, arg) in enumerate(expr.args)
+    if typeof(arg) <: Expr
+      # recurse
+      replaceSymbol!(arg, symbol, replacement)
+    elseif arg == symbol
+      # replace
+      expr.args[i] = replacement
+    end
+  end
+end
+
 function exprResultType(expr)
   # TODO Use the internal type inference features instead of rolling my own
   exprtype = typeof(expr)

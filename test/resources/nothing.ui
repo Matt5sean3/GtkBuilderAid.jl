@@ -195,7 +195,6 @@
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <property name="relief">none</property>
                     <property name="use_stock">True</property>
                     <property name="yalign">0.47999998927116394</property>
                   </object>

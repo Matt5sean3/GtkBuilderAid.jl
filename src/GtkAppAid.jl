@@ -43,6 +43,7 @@ macro GtkAidBuild(args...)
 
   userdata_call = :(userdata())
   directives = Set{Symbol}()
+  function_name = :genned_function
   for directive in args[1:end - 2]
     if typeof(directive) <: Symbol
       # A symbol directive
@@ -50,6 +51,7 @@ macro GtkAidBuild(args...)
     elseif typeof(directive) <: Expr
       # An expression directive
       if directive.head == :call
+        push!(directives, directive.args[1])
         if directive.args[1] == :userdata
           # Creates a tuple from the arguments
           # and uses that as the userinfo argument
@@ -57,9 +59,14 @@ macro GtkAidBuild(args...)
         end
 
         if directive.args[1] == :application_window
-          directive.args[2]
-          directive.args[3]
+          app_expr = directive.args[2] # The app object's symbol or expression
+          window_id = directive.args[3] # id of the application window
         end
+
+        if directive.args[1] == :function
+          function_name = directive.args[2]
+        end
+
       end
     else
       # A different sort of directive
@@ -110,26 +117,32 @@ macro GtkAidBuild(args...)
     end
   end
 
-  # Whether to make the block accessible elsewhere
-  if !(:sanitize in directives)
-    block = esc(block)
-  end
-
-  println("BEFORE QUOTE")
-  # Needs to do all of this in the parent scope
-  ret = quote 
-    # Use sanitization for TypeInfo
-    typealias UserInfo $userdata_tuple_type
-    # Prevent sanitization for the function names
-    # First needs to resolve the original block in the parent scope
+  # Add commands 
+  push!(block.args, quote
     built = @GtkBuilder(filename=$filename)
-    $block
-    built
+    # perform the symbol resolution actions
+    return built
+  end)
+
+  # Emulate a typealias
+  replaceSymbol!(block, :UserData, userdata_tuple_type)
+
+  # Needs to do much of this in the parent scope
+  return if :function_name in directives
+    esc(quote
+      function $function_name()
+        $block
+      end
+      $function_name
+    end)
+  else
+    quote 
+      function $function_name()
+        $(esc(block))
+      end
+      $function_name
+    end
   end
-
-  println("MACRO COMPLETES")
-  return ret
-
 end
 
 end # module

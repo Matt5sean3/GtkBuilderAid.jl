@@ -7,17 +7,13 @@ include("function_inference.jl")
 # Create an empty application
 example_app = @GtkApplication("com.github.example", 0)
 
-# Test out GtkHelperBuild macro
-# Should encapsulate everything into a function
-
 # TODO add an application_window(window, application) directive
-built = @GtkAidBuild verbose userdata(example_app::GtkApplication) "resources/nothing.ui" begin
+builder = @GtkAidBuild userdata(example_app::GtkApplication) "resources/nothing.ui" begin
 
 function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::UserInfo)
+    user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
-  # "nothing" is just a symbol when used in a macro
   return nothing::Void
 end
 
@@ -30,5 +26,17 @@ end
 
 end
 
-push!(example_app, Gtk.GAccessor.object(built, "main_window"))
+function activateApp(widget, userdata)
+  app, = userdata
+  built = builder()
+  # built = @GtkBuilder(filename="resources/nothing.ui")
+  win = Gtk.GAccessor.object(built, "main_window")
+  push!(app, win)
+  showall(win)
+  return nothing
+end
+
+signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, ))
+
+run(example_app)
 
