@@ -197,6 +197,7 @@
                     <property name="receives_default">True</property>
                     <property name="use_stock">True</property>
                     <property name="yalign">0.47999998927116394</property>
+                    <signal name="clicked" handler="click_ok" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">True</property>
@@ -211,6 +212,7 @@
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
                     <property name="use_stock">True</property>
+                    <signal name="clicked" handler="close_window" object="main_window" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">True</property>

@@ -74,6 +74,7 @@ macro GtkAidBuild(args...)
   end
 
   # Determine the tuple type
+  userdata_tuple = arguments(userdata_call)
   userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(userdata_call)...)
   push!(directives, :userdata)
 
@@ -89,6 +90,9 @@ macro GtkAidBuild(args...)
   if block.head != :block
     throw("The last argument to this macro must be a block")
   end
+
+  # Emulate a typealias
+  replaceSymbol!(block, :UserData, userdata_tuple_type)
 
   line = 0
   for entry in block.args
@@ -106,6 +110,7 @@ macro GtkAidBuild(args...)
         if fdecl.function_name in keys(callback_declarations)
           throw("Function names must be unique, $line")
         end
+        callback_declarations[fdecl.function_name] = fdecl
         if :verbose in directives
           println("Adding function: $(fdecl.function_name)")
           println("Return Type: $(fdecl.return_type)")
@@ -118,30 +123,57 @@ macro GtkAidBuild(args...)
   end
 
   # Add commands 
-  push!(block.args, quote
+  append!(block.args, (quote
     built = @GtkBuilder(filename=$filename)
-    # perform the symbol resolution actions
-    return built
-  end)
+  end).args)
 
-  # Emulate a typealias
-  replaceSymbol!(block, :UserData, userdata_tuple_type)
+  # Build cfunction and argument tuple
+  add_callback_symbols_arguments = :()
+  add_callback_symbols_argument_types = :(Ptr{Gtk.GLib.GObject}, )
+  for fdecl in values(callback_declarations)
+
+    # Add the function pointer symbol
+    funcptr_symbol = Symbol(string(fdecl.function_name, "_ptr"))
+    fname = fdecl.function_name
+    frettype = fdecl.return_type
+    fargtypes = Expr(:tuple, fdecl.argument_types...)
+    fname_str = string(fname)
+    append!(block.args, (quote 
+      # The code sort of expands with this unfortunately
+      $funcptr_symbol = cfunction($fname, $frettype, $fargtypes)
+      ccall(
+          (:gtk_builder_add_callback_symbol, Gtk.libgtk),
+          Void,
+          (Ptr{Gtk.GLib.GObject}, Ptr{UInt8}, Ptr{Void}),
+          built,
+          $fname_str,
+          $funcptr_symbol)
+    end).args)
+  end
+
+  append!(block.args, (quote
+    # connect the signals and the userdata tuple
+    # TODO ensure the userdata_tuple doesn't get garbage collected
+    userdata = $userdata_tuple
+    ccall(
+        (:gtk_builder_connect_signals, Gtk.libgtk), 
+        Void, 
+        (Ptr{Gtk.GLib.GObject}, Ptr{Void}),
+        built,
+        pointer_from_objref(userdata))
+    return built
+  end).args)
 
   # Needs to do much of this in the parent scope
-  return if :function_name in directives
-    esc(quote
-      function $function_name()
-        $block
-      end
-      $function_name
-    end)
+  funcdef = if :function_name in directives
+    esc(Expr(:function, :($function_name()), block))
   else
-    quote 
-      function $function_name()
-        $(esc(block))
-      end
-      $function_name
-    end
+    Expr(:function, :($function_name()), esc(block))
+  end
+
+  return quote
+    $funcdef
+    $function_name
   end
 end
 

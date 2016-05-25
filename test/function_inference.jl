@@ -97,6 +97,13 @@ end
   nothing::Void
 end
 
+@test_macro quit_app Void Ptr{Gtk.GLib.GObject} Ptr{Tuple{Gtk.GtkApplication}} function quit_app(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::Ptr{Tuple{Gtk.GtkApplication}})
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  return nothing::Void
+end
+
 # Inference on this is much harder
 # The *= method could be overriden
 # @test_macro factorial3 Int Int function factorial3(value::Int)

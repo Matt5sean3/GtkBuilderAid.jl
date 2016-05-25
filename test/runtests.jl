@@ -10,33 +10,42 @@ example_app = @GtkApplication("com.github.example", 0)
 # TODO add an application_window(window, application) directive
 builder = @GtkAidBuild userdata(example_app::GtkApplication) "resources/nothing.ui" begin
 
+function click_ok(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    evt::Ptr{Gtk.GdkEventButton}, 
+    user_info::Ptr{UserData})
+  println("OK clicked!")
+  return 0
+end
+
 function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::UserData)
+    user_info::Ptr{UserData})
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    window::Ptr{Gtk.GLib.GObject})
+    evt::Ptr{Gtk.GdkEventButton}, 
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = convert(Gtk.GObject, window_ptr)
   destroy(window)
-  return nothing::Void
+  return 0
 end
 
 end
 
-function activateApp(widget, userdata)
-  app, = userdata
+@guarded function activateApp(widget, userdata)
+  app, builder = userdata
   built = builder()
-  # built = @GtkBuilder(filename="resources/nothing.ui")
   win = Gtk.GAccessor.object(built, "main_window")
   push!(app, win)
   showall(win)
   return nothing
 end
 
-signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, ))
+signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
 
 run(example_app)
 
