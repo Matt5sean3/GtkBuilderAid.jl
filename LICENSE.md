@@ -1,4 +1,4 @@
-The GtkAppAid.jl package is licensed under the MIT "Expat" License:
+The GtkBuilderAid.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2016:
 >  * Matthew Balch

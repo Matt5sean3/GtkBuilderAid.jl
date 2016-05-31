@@ -8,7 +8,7 @@ not cleanly.
 Type annotations are necessary for this case as the macro needs to compile the
 functions to cfunctions with minimal information.
 """
-macro GtkAidBuild(args...)
+macro GtkBuilderAid(args...)
   if length(args) < 2
     throw("ERROR: Requires at least two arguments")
   end

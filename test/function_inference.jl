@@ -1,5 +1,5 @@
 
-import GtkAppAid: FunctionDeclaration
+import GtkBuilderAid: FunctionDeclaration
 # Function inference from code analysis is somewhat difficult
 # The system here aims at determining the type as it would be in C
 # Hopefully typealiases don't give terrible issues
@@ -88,6 +88,20 @@ end
   ret::Int
 end
 @test factorial2(5) == 2 * 3 * 4 * 5
+
+@test_macro lastFor Void Int function lastFor(cycles::Int)
+  j = 0
+  for i in 1:cycles
+    j = i + 1
+  end
+end
+
+@test_macro lastWhile Void Int function lastWhile(cycles::Int)
+  j = 0
+  while j < cycles
+    j = j + 1
+  end
+end
 
 # Test decoding the functions we actually use
 @test_macro close_window Void Ptr{Gtk.GLib.GObject} Ptr{Gtk.GLib.GObject} function close_window(

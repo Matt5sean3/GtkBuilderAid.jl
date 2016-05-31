@@ -1,12 +1,11 @@
-using GtkBuilderAid
-using Gtk
-using Base.Test
+#!/usr/bin/env julia
 
-include("function_inference.jl")
+using Gtk
+using GtkBuilderAid
 
 example_app = @GtkApplication("com.github.example", 0)
 
-builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/nothing.ui" begin
+builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/first.ui" begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
@@ -45,3 +44,4 @@ end
 
 signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
 
+run(example_app)
