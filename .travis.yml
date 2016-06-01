@@ -4,11 +4,26 @@ os:
   - linux
   - osx
 julia:
+  - 0.4
   - release
   - nightly
 notifications:
   email: false
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # let xvfb start up
+
 # uncomment the following lines to override the default test script
-#script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("GtkAppAid"); Pkg.test("GtkAppAid"; coverage=true)'
+script:
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - julia -e 'Pkg.clone(pwd()); 
+              Pkg.build("GtkAppAid"); 
+              Pkg.test("GtkAppAid"; coverage=true)'
+
+after_success:
+  - julia -e 'cd(Pkg.dir("GtkBuilderAid"));
+              Pkg.add("Coverage");
+              using Coverage;
+              Coveralls.submit(process_folder())'
+

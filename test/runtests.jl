@@ -4,9 +4,9 @@ using Base.Test
 
 include("function_inference.jl")
 
-example_app = @GtkApplication("com.github.example", 0)
+test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
 
-builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/nothing.ui" begin
+builder = @GtkBuilderAid userdata(test_app::GtkApplication) "resources/nothing.ui" begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
@@ -43,5 +43,7 @@ end
   return nothing
 end
 
-signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
+signal_connect(activateApp, test_app, :activate, Void, (), false, (test_app, builder))
+
+# run(test_app)
 
