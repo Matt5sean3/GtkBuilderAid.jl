@@ -2,7 +2,6 @@
 language: julia
 os:
   - linux
-  - osx
 julia:
   - 0.4
   - release
@@ -23,8 +22,8 @@ before_script:
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia -e 'Pkg.clone(pwd()); 
-              Pkg.build("GtkAppAid"); 
-              Pkg.test("GtkAppAid"; coverage=true)'
+              Pkg.build("GtkBuilderAid"); 
+              Pkg.test("GtkBuilderAid"; coverage=true)'
 
 after_success:
   - julia -e 'cd(Pkg.dir("GtkBuilderAid"));
