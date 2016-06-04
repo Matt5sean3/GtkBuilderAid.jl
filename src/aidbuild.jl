@@ -10,12 +10,12 @@ functions to cfunctions with minimal information.
 """
 macro GtkBuilderAid(args...)
   if length(args) < 2
-    throw("ERROR: Requires at least two arguments")
+    throw(ArgumentError("ERROR: Requires at least two arguments"))
   end
 
   userdata_call = :(userdata())
   directives = Set{Symbol}()
-  function_name = :genned_function
+  generated_function_name = :genned_function
   for directive in args[1:end - 2]
     if typeof(directive) <: Symbol
       # A symbol directive
@@ -30,13 +30,8 @@ macro GtkBuilderAid(args...)
           userdata_call = directive
         end
 
-        if directive.args[1] == :application_window
-          app_expr = directive.args[2] # The app object's symbol or expression
-          window_id = directive.args[3] # id of the application window
-        end
-
         if directive.args[1] == :function
-          function_name = directive.args[2]
+          generated_function_name = directive.args[2]
         end
 
       end
@@ -55,12 +50,12 @@ macro GtkBuilderAid(args...)
 
   filename = args[end - 1]
   if !isfile(filename)
-    throw("ERROR: Provided UI file does not exist")
+    throw(ErrorException("Provided UI file does not exist"))
   end
 
   block = args[end]::Expr
   if block.head != :block
-    throw("The last argument to this macro must be a block")
+    throw(ArgumentError("The last argument to this macro must be a block"))
   end
 
   # Emulate a typealias
@@ -80,7 +75,7 @@ macro GtkBuilderAid(args...)
         fdecl = FunctionDeclaration(entry)
 
         if fdecl.function_name in keys(callback_declarations)
-          throw("Function names must be unique, $line")
+          throw(DomainError("Function names must be unique, $line"))
         end
         callback_declarations[fdecl.function_name] = fdecl
         if :verbose in directives
@@ -138,13 +133,20 @@ macro GtkBuilderAid(args...)
 
   # Needs to do much of this in the parent scope
   funcdef = if :function_name in directives
-    esc(Expr(:function, :($function_name()), block))
+    esc(Expr(:function, :($generated_function_name()), block))
   else
-    Expr(:function, :($function_name()), esc(block))
+    Expr(:function, :($generated_function_name()), esc(block))
   end
 
-  return quote
-    $funcdef
-    $function_name
+  if :function_name in directives
+    return quote
+      $funcdef
+      $(esc(generated_function_name))
+    end
+  else
+    return quote
+      $funcdef
+      $generated_function_name
+    end
   end
 end

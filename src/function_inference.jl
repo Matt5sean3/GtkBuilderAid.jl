@@ -1,4 +1,12 @@
 
+export InferenceException
+
+type InferenceException <: Exception
+  str
+end
+
+Base.showerror(io::IO, err::InferenceException) = print(io, err.str)
+
 function replaceSymbol!(expr::Expr, symbol::Symbol, replacement)
   # recursive symbol replacement
   for (i, arg) in enumerate(expr.args)
@@ -16,17 +24,14 @@ function exprResultType(expr)
   # TODO Use the internal type inference features instead of rolling my own
   exprtype = typeof(expr)
   if exprtype <: Symbol
-    throw("Cannot determine type of Symbols directly")
+    throw(InferenceException("Cannot determine type of Symbols directly"))
   elseif exprtype <: Expr
     result = Void
-    if expr.typ != Any
-      # Internally annotated already
-      return Symbol(string(expr.typ))
-    elseif expr.head == :(::)
+    if expr.head == :(::)
       # Directly annotated, makes life much easier
       result = expr.args[2]
     elseif expr.head == :call
-      throw("Cannot determine return type of call directly")
+      throw(InferenceException("Cannot determine return type of call directly"))
     elseif expr.head == :return
       result = exprResultType(expr.args[1])
     elseif expr.head == :if
@@ -39,7 +44,7 @@ function exprResultType(expr)
         false_block_type = exprResultType(expr.args[3])
       end
       if true_block_type != false_block_type
-        throw("The if blocks provide differing result types")
+        throw(InferenceException("The if blocks provide differing result types"))
       end
       result = true_block_type
     elseif expr.head == :while || expr.head == :for
@@ -79,7 +84,7 @@ end
 function blockReturnType(block, line = 0)
   explicit_rts = explicitBlockReturnType(block)
   if length(explicit_rts) > 1
-    throw("ERROR: Multiple explicit return types, $line")
+    throw(InferenceException("ERROR: Multiple explicit return types, $line"))
   elseif length(explicit_rts) < 1
     return exprResultType(block)
   else
@@ -87,16 +92,16 @@ function blockReturnType(block, line = 0)
   end
 end
 
-function functionName(call_expr, line = 0)
+function functionName(call_expr::Expr, line = 0)
   if call_expr.head != :call
-    throw("Malformed function declaration, $line")
+    throw(InferenceException("Malformed function declaration, $line"))
   end
   call_expr.args[1]::Symbol
 end
 
-function arguments(call_expr, line = 0)
+function arguments(call_expr::Expr, line = 0)
   if call_expr.head != :call
-    throw("Malformed function declaration, $line")
+    throw(InferenceException("Malformed function declaration, $line"))
   end
   call_expr = copy(call_expr)
   call_expr.head = :tuple
@@ -119,7 +124,7 @@ type FunctionDeclaration
   argument_types::Array{Union{Expr, Symbol}, 1}
   function FunctionDeclaration(function_expr::Expr)
     if function_expr.head != :function && function_expr.head != :(==)
-      throw("ERROR: getting declaration of non-function expression")
+      throw(InferenceException("ERROR: getting declaration of non-function expression"))
     end
     fcall = function_expr.args[1]::Expr
     fblock = function_expr.args[2]::Expr

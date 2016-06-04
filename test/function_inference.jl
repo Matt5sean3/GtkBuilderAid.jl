@@ -1,4 +1,5 @@
 
+using GtkBuilderAid
 import GtkBuilderAid: FunctionDeclaration
 # Function inference from code analysis is somewhat difficult
 # The system here aims at determining the type as it would be in C
@@ -6,15 +7,29 @@ import GtkBuilderAid: FunctionDeclaration
 
 macro test_macro(args...)
   # mostly, test that the return and argument types are correctly inferred
-  function_name = args[1]
-  return_type = args[2]
-  argument_types = [arg::Union{Symbol, Expr} for arg in args[3:end - 1]]
   function_expr = args[end]
-  declaration = FunctionDeclaration(function_expr)
-  @test declaration.function_name == function_name
-  @test declaration.return_type == return_type
-  @test declaration.argument_types == argument_types
+  if args[1] == :throws
+    @test_throws InferenceException declaration = FunctionDeclaration(function_expr)
+  else
+    function_name = args[1]
+    return_type = args[2]
+    argument_types = 
+    declaration = FunctionDeclaration(function_expr)
+    @test declaration.function_name == args[1]
+    @test declaration.return_type == args[2]
+    @test declaration.argument_types == [arg::Union{Symbol, Expr} for arg in args[3:end - 1]]
+  end
   return esc(function_expr)
+end
+
+@test_throws InferenceException GtkBuilderAid.functionName(:(tups{hello}))
+@test_throws InferenceException GtkBuilderAid.functionName(:(hello, 5, 6))
+@test_throws InferenceException GtkBuilderAid.arguments(:(tupe{hello}))
+
+# Only infers about functions
+@test_throws InferenceException FunctionDeclaration(:(tupe{hello}))
+@test_macro throws begin
+  # NOP
 end
 
 # Constant explicit return
@@ -51,6 +66,7 @@ end
 end
 @test positiveNegative1(5)
 @test !positiveNegative1(-5)
+
 # Implicit return in an if block
 @test_macro positiveNegative2 Bool Int function positiveNegative2(value::Int)
   if value > 0
@@ -61,6 +77,37 @@ end
 end
 @test positiveNegative2(5)
 @test !positiveNegative2(-5)
+
+# If block void return type
+@test_macro positiveNegative2 Void Int function positiveNegative2(value::Int)
+  if value > 0
+    nothing::Void
+  end
+end
+
+# Multiple explicit return type issues
+@test_macro throws function positiveNegative3(value::Int)
+  if value > 0
+    return 0
+  else
+    return false
+  end
+end
+
+# Differing return type if block
+@test_macro throws function positiveNegative4(value::Int)
+  if value > 0
+    true
+  else
+    0
+  end
+end
+
+@test_macro throws function positiveNegative5(value::Int)
+  if value > 0
+    true
+  end
+end
 
 # Can't directly infer, needs annotation
 @test_macro positiveNegative3 Bool Int function positiveNegative3(value::Int)
@@ -116,5 +163,21 @@ end
     user_info::Ptr{Tuple{Gtk.GtkApplication}})
   ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{Gtk.GLib.GObject}, ), user_info[1])
   return nothing::Void
+end
+
+# Test that just returning a symbol isn't working
+@test_macro throws function bad_quit_app(
+    widget::Ptr{Gtk.GLib.GObject},
+    user_info::Ptr{Tuple{Gtk.GtkApplication}})
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{Gtk.GLib.GObject}, ), user_info[1])
+  return nothing
+end
+
+# Returning directly from calls without annotation is also an issue
+@test_macro throws function bad_quit_app2(
+    widget::Ptr{Gtk.GLib.GObject},
+    user_info::Ptr{Tuple{Gtk.GtkApplication}})
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{Gtk.GLib.GObject}, ), user_info[1])
+  return Void()
 end
 
