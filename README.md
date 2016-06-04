@@ -1,4 +1,7 @@
 # GtkBuilderAid.jl
+[![Build Status](https://travis-ci.org/Matt5sean3/GtkBuilderAid.jl.svg?branch=master)](https://travis-ci.org/Matt5sean3/GtkBuilderAid.jl)
+[![Coverage Status](https://coveralls.io/repos/github/Matt5sean3/GtkBuilderAid.jl/badge.svg?branch=master)](https://coveralls.io/github/Matt5sean3/GtkBuilderAid.jl?branch=master)
+
 This package's functionality is very narrowly to enable creating Gtk GUIs using [Glade](https://glade.gnome.org/) and [Julia](http://julialang.org/) more simply than can be accomplished using only the [Julia interface to Gtk](https://github.com/JuliaLang/Gtk.jl). The main concept is to use the signal connection features of the GtkBuilder object as simply in Julia as they can be from C.
 
 ## Example

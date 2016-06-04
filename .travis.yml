@@ -22,6 +22,9 @@ before_script:
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia -e 'Pkg.clone(pwd()); 
+              if VERSION >= v"0.5.0-"
+                Pkg.checkout("Gtk", "master")
+              end
               Pkg.build("GtkBuilderAid"); 
               Pkg.test("GtkBuilderAid"; coverage=true)'
 
