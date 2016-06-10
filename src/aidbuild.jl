@@ -9,12 +9,27 @@ Type annotations are necessary for this case as the macro needs to compile the
 functions to cfunctions with minimal information.
 """
 macro GtkBuilderAid(args...)
-  if length(args) < 2
-    throw(ArgumentError("ERROR: Requires at least two arguments"))
+  if length(args) < 1
+    throw(ArgumentError("GtkBuilderAid macro requires at least one argument"))
+  end
+
+  user_block = args[end]::Expr
+  if user_block.head != :block
+    throw(ArgumentError("The last argument to this macro must be a block"))
+  end
+
+  directives = Set{Symbol}()
+
+  if length(args) >= 2 && isa(args[end - 1], AbstractString)
+    # Enables the pre-bound version
+    filename = args[end - 1]
+    if !isfile(filename)
+      throw(ErrorException("Provided UI file, $filename, does not exist"))
+    end
+    push!(directives, :filename)
   end
 
   userdata_call = :(userdata())
-  directives = Set{Symbol}()
   generated_function_name = :genned_function
   for directive in args[1:end - 2]
     if typeof(directive) <: Symbol
@@ -48,21 +63,11 @@ macro GtkBuilderAid(args...)
   # Analogous to function declarations of a C header file
   callback_declarations = Dict{Symbol, FunctionDeclaration}();
 
-  filename = args[end - 1]
-  if !isfile(filename)
-    throw(ErrorException("Provided UI file does not exist"))
-  end
-
-  block = args[end]::Expr
-  if block.head != :block
-    throw(ArgumentError("The last argument to this macro must be a block"))
-  end
-
   # Emulate a typealias
-  replaceSymbol!(block, :UserData, userdata_tuple_type)
+  replaceSymbol!(user_block, :UserData, userdata_tuple_type)
 
   line = 0
-  for entry in block.args
+  for entry in user_block.args
 
     if typeof(entry) <: Expr
       if entry.head == :line
@@ -89,39 +94,39 @@ macro GtkBuilderAid(args...)
     end
   end
 
-  # Add commands 
-  append!(block.args, (quote
-    built = @GtkBuilder(filename=$filename)
-  end).args)
-
-  # Build cfunction and argument tuple
-  add_callback_symbols_arguments = :()
-  add_callback_symbols_argument_types = :(Ptr{Gtk.GLib.GObject}, )
+  funcdata = Expr(:vect)
   for fdecl in values(callback_declarations)
+    # [1] function symbol
+    # [2] function string name
+    # [3] function return type
+    # [4] function argument types
+    push!(funcdata.args, Expr(:tuple, 
+        fdecl.function_name,
+        string(fdecl.function_name),
+        fdecl.return_type,
+        Expr(:tuple, fdecl.argument_types...)))
+  end
 
-    # Add the function pointer symbol
-    funcptr_symbol = Symbol(string(fdecl.function_name, "_ptr"))
-    fname = fdecl.function_name
-    frettype = fdecl.return_type
-    fargtypes = Expr(:tuple, fdecl.argument_types...)
-    fname_str = string(fname)
-    append!(block.args, (quote 
-      # The code sort of expands with this unfortunately
-      $funcptr_symbol = cfunction($fname, $frettype, $fargtypes)
+  # Escape the modified user block
+  block = quote
+    $(esc(user_block))
+
+    if !isfile(filename)
+      throw(ErrorException("Provided UI file, $filename, does not exist"))
+    end
+    built = @GtkBuilder(filename=filename)
+    
+    for func in $(esc(funcdata))
+      funcptr = cfunction(func[1], func[3], func[4])
       ccall(
           (:gtk_builder_add_callback_symbol, Gtk.libgtk),
           Void,
           (Ptr{Gtk.GLib.GObject}, Ptr{UInt8}, Ptr{Void}),
           built,
-          $fname_str,
-          $funcptr_symbol)
-    end).args)
-  end
+          func[2],
+          funcptr)
+    end
 
-  append!(block.args, (quote
-    # connect the signals and the userdata tuple
-    # TODO ensure the userdata_tuple doesn't get garbage collected
-    userdata = $userdata_tuple
     ccall(
         (:gtk_builder_connect_signals, Gtk.libgtk), 
         Void, 
@@ -129,24 +134,30 @@ macro GtkBuilderAid(args...)
         built,
         pointer_from_objref(userdata))
     return built
-  end).args)
-
-  # Needs to do much of this in the parent scope
-  funcdef = if :function_name in directives
-    esc(Expr(:function, :($generated_function_name()), block))
-  else
-    Expr(:function, :($generated_function_name()), esc(block))
   end
 
   if :function_name in directives
-    return quote
-      $funcdef
-      $(esc(generated_function_name))
-    end
+    final_function_name = :($(esc(generated_function_name)))
   else
-    return quote
-      $funcdef
-      $generated_function_name
-    end
+    final_function_name = generated_function_name
   end
+
+  funcdef = Expr(:function, :($final_function_name(filename, userdata)), block)
+
+  ret = quote
+    $funcdef
+
+    $final_function_name(filename) = $final_function_name(filename, $(esc(userdata_tuple)))
+  end
+
+  # Add the bound method
+  if :filename in directives
+    append!(ret.args, (quote 
+      $final_function_name() = $final_function_name($filename)
+    end).args)
+  end
+
+  push!(ret.args, final_function_name)
+
+  return ret
 end
