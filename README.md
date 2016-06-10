@@ -99,6 +99,54 @@ end
 
 There is currently no inference for argument types.
 
+## Runtime UI File Selection
+The example above could be rewritten slightly to enable selecting the either or both of the filename or userdata at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and userdata options are set for the macro the method allowing selection of the UI file and userdata will still be available. However, the types for the userdata must still be available at compile time.
+
+```julia
+example_app = @GtkApplication("com.github.example", 0)
+
+builder = @GtkBuilderAid userdata(example_app::GtkApplication) begin
+
+function click_ok(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    evt::Ptr{Gtk.GdkEventButton}, 
+    user_info::Ptr{UserData})
+  println("OK clicked!")
+  return 0
+end
+
+function quit_app(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::Ptr{UserData})
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  return nothing::Void
+end
+
+function close_window(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    evt::Ptr{Gtk.GdkEventButton}, 
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = convert(Gtk.GObject, window_ptr)
+  destroy(window)
+  return 0
+end
+
+end
+
+@guarded function activateApp(widget, userdata)
+  app, builder = userdata
+  built = builder("$(Pkg.dir("*your_package*"))/resources/main.ui")
+  win = Gtk.GAccessor.object(built, "main_window")
+  push!(app, win)
+  showall(win)
+  return nothing
+end
+
+signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
+
+run(example_app)
+```
+
 ## Additional Considerations
 
 ### If Blocks
@@ -128,5 +176,5 @@ Functions defined with multiple methods are allowable within Julia but introduce
 
 ### Argument Type Assumptions
 
-The first and final argument types of a callback can usually be guessed without a problem, which is what the Gtk wrapper does internally for `signal_connect`. Similarly, adding this assumption would make this package more user friendly and better in-line with the Gtk wrapper library.
+The first and final argument types of a callback can usually be guessed without a problem, which is what the Gtk wrapper does internally for `signal_connect`. Similarly, adding this assumption would make this package more user friendly and better in-line with the Gtk wrapper library, however that assumption has not been implemented yet.
 

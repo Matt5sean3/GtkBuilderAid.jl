@@ -31,7 +31,7 @@ macro GtkBuilderAid(args...)
 
   userdata_call = :(userdata())
   generated_function_name = :genned_function
-  for directive in args[1:end - 2]
+  for directive in args[1:end - 1]
     if typeof(directive) <: Symbol
       # A symbol directive
       push!(directives, directive)
