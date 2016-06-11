@@ -13,15 +13,12 @@ addons:
     packages:
       - xvfb
       - libgtk-3-0
-before_script:
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-  - sleep 3 # let xvfb start up
-
 # uncomment the following lines to override the default test script
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.clone(pwd()); 
+  - xvfb-run julia -e 'Pkg.clone(pwd()); 
+              using BinDeps;
+              println(BinDeps.debug("Gtk"));
               if VERSION >= v"0.5.0-";
                 Pkg.checkout("Gtk", "master");
               end;
