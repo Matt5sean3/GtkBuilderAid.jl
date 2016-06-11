@@ -178,3 +178,7 @@ Functions defined with multiple methods are allowable within Julia but introduce
 
 The first and final argument types of a callback can usually be guessed without a problem, which is what the Gtk wrapper does internally for `signal_connect`. Similarly, adding this assumption would make this package more user friendly and better in-line with the Gtk wrapper library, however that assumption has not been implemented yet.
 
+### GTK Version
+
+This package requires using `gtk_builder_add_callback_symbols` at the moment which was introduced in GTK version 3.10 which was released in late 2013. Unfortunately, this means distributions released before 2014 may run into difficulties utilizing this package due to binary dependencies. There are plans to rework the library to utilize `gtk_builder_connect_signals_full` instead which has been available since GTK version 2.12 and gives greater control besides.
+
