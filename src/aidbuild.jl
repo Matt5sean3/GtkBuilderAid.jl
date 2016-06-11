@@ -1,4 +1,61 @@
 
+immutable FunctionInfo
+  func::Function
+  return_type::Type
+  argument_types::Array{Type}
+end
+
+type SignalConnectionData
+  handlers::Dict{AbstractString, FunctionInfo}
+  data
+end
+
+# A cfunction to configure connections
+function connectSignals(
+    builder, 
+    object_ptr, 
+    signal_name_ptr, 
+    handler_name_ptr, 
+    connect_object_ptr, 
+    flags, 
+    userdata_ptr)
+
+  userdata = unsafe_pointer_to_objref(userdata_ptr)
+
+  handler_name = bytestring(handler_name_ptr)
+  handler = userdata.handlers[handler_name]
+  
+  if connect_object_ptr == C_NULL
+    # Use the provided 
+    object = Gtk.GLib.GObject(object_ptr)
+    signal_name = bytestring(signal_name_ptr)
+
+    signal_connect(
+        handler.func, 
+        object, 
+        signal_name, 
+        handler.return_type, 
+        (handler.argument_types[2:end - 1]...), 
+        false, 
+        userdata.data)
+  else
+    # Connect the objects directly
+    handler.argument_types[1] = Ptr{Gtk.GLib.GObject}
+    handler.argument_types[end] = Ptr{Gtk.GLib.GObject}
+    ccall(
+        (:g_signal_connect_object, Gtk.libgtk),
+        Culong,
+        (Ptr{Gtk.GLib.GObject}, Ptr{UInt8}, Ptr{Void}, Ptr{Gtk.GLib.GObject}, Gtk.GEnum),
+        object_ptr,
+        signal_name_ptr,
+        cfunction(handler.func, handler.return_type, (handler.argument_types...)),
+        connect_object_ptr,
+        flags)
+  end
+
+  return nothing
+end
+
 """
 This macro is meant to make using glade with Julia as easy as working with 
 Glade in C is. From a staticly compiled language the function names are just
@@ -106,7 +163,7 @@ macro GtkBuilderAid(args...)
         fdecl.function_name,
         string(fdecl.function_name),
         fdecl.return_type,
-        Expr(:tuple, fdecl.argument_types...)))
+        Expr(:vect, fdecl.argument_types...)))
   end
 
   # Escape the modified user block
@@ -118,23 +175,30 @@ macro GtkBuilderAid(args...)
     end
     built = @GtkBuilder(filename=filename)
     
+    handlers = Dict{AbstractString, FunctionInfo}()
     for func in $(esc(funcdata))
-      funcptr = cfunction(func[1], func[3], func[4])
-      ccall(
-          (:gtk_builder_add_callback_symbol, Gtk.libgtk),
-          Void,
-          (Ptr{Gtk.GLib.GObject}, Ptr{UInt8}, Ptr{Void}),
-          built,
-          func[2],
-          funcptr)
+      handlers[func[2]] = FunctionInfo(func[1], func[3], func[4])
     end
 
-    ccall(
-        (:gtk_builder_connect_signals, Gtk.libgtk), 
+    connector = cfunction(
+        connectSignals, 
         Void, 
-        (Ptr{Gtk.GLib.GObject}, Ptr{Void}),
-        built,
-        pointer_from_objref(userdata))
+        (
+            Ptr{Gtk.GLib.GObject}, 
+            Ptr{Gtk.GLib.GObject},
+            Ptr{UInt8},
+            Ptr{UInt8},
+            Ptr{Gtk.GLib.GObject},
+            Int,
+            Ptr{Void}))
+    ccall(
+        (:gtk_builder_connect_signals_full, Gtk.libgtk),
+        Void,
+        (Ptr{Gtk.GLib.GObject}, Ptr{Void}, Ptr{Void}), 
+        built, 
+        connector,
+        pointer_from_objref(SignalConnectionData(handlers, userdata)))
+
     return built
   end
 
