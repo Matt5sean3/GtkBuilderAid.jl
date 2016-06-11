@@ -29,7 +29,8 @@ macro GtkBuilderAid(args...)
     push!(directives, :filename)
   end
 
-  userdata_call = :(userdata())
+  userdata_tuple = ()
+  userdata_tuple_type = Expr(:curly, :Tuple)
   generated_function_name = :genned_function
   for directive in args[1:end - 1]
     if typeof(directive) <: Symbol
@@ -42,11 +43,17 @@ macro GtkBuilderAid(args...)
         if directive.args[1] == :userdata
           # Creates a tuple from the arguments
           # and uses that as the userinfo argument
-          userdata_call = directive
+          userdata_tuple = arguments(directive)
+          userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(directive)...)
+          push!(directives, :userdata)
         end
 
         if directive.args[1] == :function
           generated_function_name = directive.args[2]
+        end
+
+        if directive.args[1] == :userdatatype
+          userdata_tuple_type = Expr(:curly, :Tuple, directive.args[2:end]...)
         end
 
       end
@@ -54,11 +61,6 @@ macro GtkBuilderAid(args...)
       # A different sort of directive
     end
   end
-
-  # Determine the tuple type
-  userdata_tuple = arguments(userdata_call)
-  userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(userdata_call)...)
-  push!(directives, :userdata)
 
   # Analogous to function declarations of a C header file
   callback_declarations = Dict{Symbol, FunctionDeclaration}();
@@ -142,22 +144,22 @@ macro GtkBuilderAid(args...)
     final_function_name = generated_function_name
   end
 
-  funcdef = Expr(:function, :($final_function_name(filename, userdata)), block)
+  filename_arg = Expr(:(::), :filename, :AbstractString)
+  if :filename in directives
+    filename_arg = Expr(:kw, filename_arg, filename)
+  end
+
+  userdata_arg = Expr(:(::), :userdata, userdata_tuple_type)
+  if !(:userdatatype in directives)
+    userdata_arg = Expr(:kw, userdata_arg, esc(userdata_tuple))
+  end
+
+  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg)), block)
 
   ret = quote
     $funcdef
-
-    $final_function_name(filename) = $final_function_name(filename, $(esc(userdata_tuple)))
+    $final_function_name
   end
-
-  # Add the bound method
-  if :filename in directives
-    append!(ret.args, (quote 
-      $final_function_name() = $final_function_name($filename)
-    end).args)
-  end
-
-  push!(ret.args, final_function_name)
 
   return ret
 end

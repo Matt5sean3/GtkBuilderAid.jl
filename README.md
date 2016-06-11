@@ -105,7 +105,7 @@ The example above could be rewritten slightly to enable selecting the either or 
 ```julia
 example_app = @GtkApplication("com.github.example", 0)
 
-builder = @GtkBuilderAid userdata(example_app::GtkApplication) begin
+builder = @GtkBuilderAid userdatatype(GtkApplication) begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
@@ -135,7 +135,7 @@ end
 
 @guarded function activateApp(widget, userdata)
   app, builder = userdata
-  built = builder("$(Pkg.dir("*your_package*"))/resources/main.ui")
+  built = builder("$(Pkg.dir("*your_package*"))/resources/main.ui", (app, ))
   win = Gtk.GAccessor.object(built, "main_window")
   push!(app, win)
   showall(win)

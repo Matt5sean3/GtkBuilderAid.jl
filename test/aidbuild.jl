@@ -25,6 +25,39 @@ end)
 
 test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
 
+# Try out known userdata with 
+long_builder = @GtkBuilderAid userdatatype(GtkApplication) begin
+
+function click_ok(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    evt::Ptr{Gtk.GdkEventButton}, 
+    user_info::Ptr{UserData})
+  println("OK clicked!")
+  return 0
+end
+
+function quit_app(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::Ptr{UserData})
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  return nothing::Void
+end
+
+function close_window(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    evt::Ptr{Gtk.GdkEventButton}, 
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = convert(Gtk.GObject, window_ptr)
+  destroy(window)
+  return 0
+end
+
+end
+
+@test_throws MethodError long_builder()
+@test_throws MethodError long_builder("resources/nothing.ui")
+long_builder("resources/nothing.ui", (test_app, ))
+
 # Show the expanded macro
 # Mostly check that this succeeds
 builder = @GtkBuilderAid verbose userdata(test_app::GtkApplication) "resources/nothing.ui" begin
