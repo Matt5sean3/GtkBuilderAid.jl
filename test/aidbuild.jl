@@ -30,24 +30,22 @@ long_builder = @GtkBuilderAid userdatatype(GtkApplication) begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::Ptr{UserData})
+    user_info::UserData)
   println("OK clicked!")
   return 0
 end
 
 function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::Ptr{UserData})
+    user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
     window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+  window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
   return 0
 end
@@ -64,24 +62,21 @@ builder = @GtkBuilderAid verbose userdata(test_app::GtkApplication) "resources/n
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::Ptr{UserData})
+    user_info::UserData)
   println("OK clicked!")
   return 0
 end
 
 function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::Ptr{UserData})
+    user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+    window::Ptr{Gtk.GLib.GObject})
   destroy(window)
   return 0
 end
@@ -97,8 +92,7 @@ builder("$(Pkg.dir("GtkBuilderAid"))/test/resources/nothing.ui")
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::Ptr{UserData})
+    user_info::UserData)
   println("OK clicked!")
   return 0
 end
@@ -110,17 +104,15 @@ base_method_builder = @GtkBuilderAid begin
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
     window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+  window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
   return 0
 end
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::Ptr{UserData})
+    user_info::UserData)
   println("OK clicked!")
   return 0
 end
@@ -137,9 +129,8 @@ test_macro_throws(ErrorException, quote
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
     window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+  window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
   return 0
 end
@@ -155,18 +146,14 @@ test_macro_throws(MethodError, quote
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+    window::Ptr{Gtk.GLib.GObject})
   destroy(window)
   return 0
 end
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+    window::Ptr{Gtk.GLib.GObject})
   destroy(window)
   return 0
 end
@@ -184,6 +171,27 @@ end)
 end
 
 signal_connect(activateApp, test_app, :activate, Void, (), false, (test_app, builder))
+
+assumed_builder = @GtkBuilderAid verbose begin
+
+function close_window(
+    widget,
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return 0
+end
+
+function click_ok(
+    widget,
+    user_info::UserData)
+  println("OK clicked!")
+  return 0
+end
+
+end
+
+assumed_builder("resources/nothing.ui")
 
 # run(test_app)
 

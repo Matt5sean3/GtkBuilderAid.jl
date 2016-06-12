@@ -16,23 +16,21 @@ example_app = @GtkApplication("com.github.example", 0)
 builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/main.ui" begin
 
 function click_ok(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::Ptr{UserData})
+    widget, 
+    user_info::UserData)
   println("OK clicked!")
   return 0
 end
 
 function quit_app(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::Ptr{UserData})
+    widget,
+    user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
 function close_window(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
+    widget,
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = convert(Gtk.GObject, window_ptr)
   destroy(window)
@@ -64,24 +62,22 @@ Note how the handler for `click_ok` is filled out directly as `click_ok` to matc
 ![Glade screenshot showing the application window](doc/resources/glade_example.png)
 
 ## Type Annotation
-In order for this macro to work correctly, types must be fully annotated and there cannot be any ambiguity in the return type. A certain degree of type inference is built into this package, but is limited overall. In this way, all return expressions in a function that cannot be directly inferred need to be made explicit.
+In order for this macro to work correctly, types must be annotated and there cannot be any ambiguity in the return type. A certain degree of type inference is built into this package, but is limited overall. In this way, all return expressions in a function that cannot be directly inferred need to be made explicit.
 
 ### Explicit Type Annotation
 
-An example of an explicitly typed function is shown below. Most of the time the types annotated will be similar to those used in the [wrapper library's](https://github.com/JuliaLang/Gtk.jl), `signal_connect` function.
+An example of a sufficiently typed function is shown below. Most of the time the types annotated will be similar to those used in the [wrapper library's](https://github.com/JuliaLang/Gtk.jl), `signal_connect` function.
 
 ```julia
 function click_ok(
-    widget::Ptr{Gtk.GLib.GObject},
-    evt::Ptr{Gtk.GdkEventButton},
-    user_info::Ptr{UserData})
+    widget,
+    user_info::UserData)
   println("OK Clicked")
   return 0::Int
 end
 ```
 
-Note especially, that Int, not Int64 or Int32, is used in this case because that type needs to vary depending on CPU architecture.
-
+Note especially, that Int, not Int64 or Int32, is used in this case because that type needs to vary depending on CPU architecture. The first argument does not require type annotation because it is assumed to always be a `Ptr{Gtk.GLib.GObject}`. Also note that the UserData type is not necessarily explicitly defined but is replaced by the macro when necessary but this substitution is imperfect. When the UI file specifies a `GObject` as the userdata for a handler, the `user_info` argument would be annotated as `Ptr{Gtk.GLib.GObject}`.
 
 ### Type Inference
 
@@ -89,15 +85,12 @@ Examining the code allows certain guesses to be performed. Basic types, such as 
 
 ```julia
 function click_ok(
-    widget::Ptr{Gtk.GLib.GObject},
-    evt::Ptr{Gtk.GdkEventButton},
-    user_info::Ptr{UserData})
+    widget,
+    user_info::UserData)
   println("OK Clicked")
   return 0
 end
 ```
-
-There is currently no inference for argument types.
 
 ## Runtime UI File Selection
 The example above could be rewritten slightly to enable selecting the either or both of the filename or userdata at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and userdata options are set for the macro the method allowing selection of the UI file and userdata will still be available. However, the types for the userdata must still be available at compile time.
@@ -108,23 +101,21 @@ example_app = @GtkApplication("com.github.example", 0)
 builder = @GtkBuilderAid userdatatype(GtkApplication) begin
 
 function click_ok(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::Ptr{UserData})
+    widget,
+    user_info::UserData)
   println("OK clicked!")
   return 0
 end
 
 function quit_app(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::Ptr{UserData})
+    widget,
+    user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
 function close_window(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
+    widget,
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = convert(Gtk.GObject, window_ptr)
   destroy(window)
@@ -176,7 +167,7 @@ Functions defined with multiple methods are allowable within Julia but introduce
 
 ### Argument Type Assumptions
 
-The first and final argument types of a callback can usually be guessed without a problem, which is what the Gtk wrapper does internally for `signal_connect`. Similarly, adding this assumption would make this package more user friendly and better in-line with the Gtk wrapper library, however that assumption has not been implemented yet.
+The first argument must always be a GObject. In cases where a GObject is passed as the user data argument the final argument must also be a GObject. Otherwise the user data argument will be a tuple specified using the macro.
 
 ### GTK Version
 
