@@ -172,5 +172,26 @@ end
 
 signal_connect(activateApp, test_app, :activate, Void, (), false, (test_app, builder))
 
+assumed_builder = @GtkBuilderAid verbose begin
+
+function close_window(
+    widget,
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return 0
+end
+
+function click_ok(
+    widget,
+    user_info::UserData)
+  println("OK clicked!")
+  return 0
+end
+
+end
+
+assumed_builder("resources/nothing.ui")
+
 # run(test_app)
 

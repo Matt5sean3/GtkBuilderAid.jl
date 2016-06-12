@@ -135,6 +135,20 @@ macro GtkBuilderAid(args...)
 
       if entry.head == :function
 
+        # Modify the first argument to be a Ptr{Gtk.GLib.GObject}
+        callform = entry.args[1]
+        if(isa(callform, Expr) && callform.head == :call)
+          firstarg = callform.args[2]
+          lastarg = callform.args[end]
+          if isa(firstarg, Symbol)
+            callform.args[2] = :($firstarg::Ptr{Gtk.GLib.GObject})
+          end
+          # Replaces as necessary
+          # if isa(lastarg, Symbol)
+          #   callform.args[end] = :($lastarg::Any)
+          # end
+        end
+
         # A big spot where things can go wrong
         fdecl = FunctionDeclaration(entry)
 
