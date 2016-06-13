@@ -146,6 +146,9 @@ When an `if` statement is the final statement of a function block or an `if` sta
 ### Loop Blocks
 Whenever a loop block such as `for` or `while` is used they will always return `Void()` which can be accurately inferred by this package.
 
+### Try-Catch Blocks
+When a try-catch block is used it behaves much like an if-then block. The type of the resulting value needs to match both for the try and the catch blocks. In the case that the catch block is omitted, the resulting type of the implicit catch block is Void.
+
 ### Void() != nothing
 The `nothing` keyword can be overwritten to a different value than `Void()`. This means that even though `nothing` is generally considered to be the `Void` singleton that's not necessarily an accurate assumption. This means that even when `nothing` is returned directly annotation is still necessary.
 
