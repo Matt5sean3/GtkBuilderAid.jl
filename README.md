@@ -15,26 +15,26 @@ example_app = @GtkApplication("com.github.example", 0)
 
 builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/main.ui" begin
 
-function click_ok(
+@guarded function click_ok(
     widget, 
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
-function quit_app(
+@guarded function quit_app(
     widget,
     user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
-function close_window(
+@guarded function close_window(
     widget,
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = convert(Gtk.GObject, window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end
@@ -73,7 +73,7 @@ function click_ok(
     widget,
     user_info::UserData)
   println("OK Clicked")
-  return 0::Int
+  return nothing::Void
 end
 ```
 
@@ -88,7 +88,7 @@ function click_ok(
     widget,
     user_info::UserData)
   println("OK Clicked")
-  return 0
+  return nothing::Void
 end
 ```
 
@@ -100,26 +100,26 @@ example_app = @GtkApplication("com.github.example", 0)
 
 builder = @GtkBuilderAid userdatatype(GtkApplication) begin
 
-function click_ok(
+@guarded function click_ok(
     widget,
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
-function quit_app(
+@guarded function quit_app(
     widget,
     user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
-function close_window(
+@guarded function close_window(
     widget,
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = convert(Gtk.GObject, window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end
@@ -152,9 +152,9 @@ When a try-catch block is used it behaves much like an if-then block. The type o
 ### Void() != nothing
 The `nothing` keyword can be overwritten to a different value than `Void()`. This means that even though `nothing` is generally considered to be the `Void` singleton that's not necessarily an accurate assumption. This means that even when `nothing` is returned directly annotation is still necessary.
 
-### `@guarded` macro
+### Macros
 
-The `@guarded` macro is not currently supported within this wrapper, which is a major drawback. Work will be done to rectify this problem sooner rather than later.
+Some macros at the first layer of the block processed by the `@GtkBuilderAid` macro are manually expanded during analysis of that block. The expansion will be kept and used for analysis in the case that the expanded expression is a function definition. Macros that don't result in function definitions will be left to expand as they would have otherwise. This expansion works well enough for simple macros such as the Gtk wrapper library's `@guarded` macro but has the potential to cause complications in more complex macros.
 
 ### Nested Blocks
 
