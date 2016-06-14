@@ -7,27 +7,27 @@ example_app = @GtkApplication("com.github.example", 0)
 
 builder = @GtkBuilderAid userdata(example_app::GtkApplication) begin
 
-function click_ok(
+@guarded function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
     evt::Ptr{Gtk.GdkEventButton}, 
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
-function quit_app(
+@guarded function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
   return nothing::Void
 end
 
-function close_window(
+@guarded function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end

@@ -133,6 +133,15 @@ macro GtkBuilderAid(args...)
         line = entry.args[1]
       end
 
+      if entry.head == :macrocall
+        # expand the macro
+        expanded = macroexpand(entry)
+        if expanded.head == :function
+          entry.head = expanded.head
+          entry.args = expanded.args
+        end
+      end
+
       if entry.head == :function
 
         # Modify the first argument to be a Ptr{Gtk.GLib.GObject}

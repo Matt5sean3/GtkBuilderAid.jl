@@ -13,7 +13,6 @@ macro test_macro(args...)
   else
     function_name = args[1]
     return_type = args[2]
-    argument_types = 
     declaration = FunctionDeclaration(function_expr)
     @test declaration.function_name == args[1]
     @test declaration.return_type == args[2]
@@ -30,6 +29,39 @@ end
 @test_throws InferenceException FunctionDeclaration(:(tupe{hello}))
 @test_macro throws begin
   # NOP
+end
+
+@test_macro noBody Void function noBody()
+end
+noBody()
+
+@test_macro tryNoCatch Void function tryNoCatch()
+  try
+    Void()::Void
+  end
+end
+tryNoCatch()
+
+# @test_macro tryWithCatch Int function tryWithCatch()
+#   try
+#     0
+#   catch e
+#     1
+#   end
+# end
+# 
+@test_macro throws function tryNoCatchMismatch()
+  try
+    0
+  end
+end
+
+@test_macro throws function tryCatchMismatch()
+  try
+    0
+  catch
+    0.0
+  end
 end
 
 # Constant explicit return

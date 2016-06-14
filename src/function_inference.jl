@@ -26,7 +26,7 @@ function exprResultType(expr)
   if exprtype <: Symbol
     throw(InferenceException("Cannot determine type of Symbols directly"))
   elseif exprtype <: Expr
-    result = Void
+    result = nothing
     if expr.head == :(::)
       # Directly annotated, makes life much easier
       result = expr.args[2]
@@ -50,11 +50,33 @@ function exprResultType(expr)
     elseif expr.head == :while || expr.head == :for
       # while and for always return void
       result = :Void
+    elseif expr.head == :try
+      try_type = exprResultType(expr.args[1])
+      catch_type = exprResultType(expr.args[3])
+      if try_type != catch_type
+        throw(InferenceException("The try-catch blocks provide differing result types"))
+      end
+      result = :Void
     elseif expr.head == :block
-      # Blocks evaluate to their final argument
-      result = exprResultType(expr.args[end])
+      # Filter out line expressions
+      block_args = []
+      for arg in expr.args
+        if !isa(arg, Expr) || arg.head != :line
+          push!(block_args, arg)
+        end
+      end
+      if length(block_args) == 0
+        # An empty block returns void
+        result = :Void
+      else
+        # Blocks evaluate to their final argument
+        result = exprResultType(block_args[end])
+      end
     end
     # expr.typ = eval(result)
+    if(result == nothing)
+      warn("Did not retrieve a result type: $(expr)")
+    end
     return result
   else
     # constants aren't too hard

@@ -1,4 +1,6 @@
 
+import GtkBuilderAid: InferenceException
+
 function test_macro_throws(error_type, macroexpr)
   expansion = macroexpand(macroexpr)
   if expansion.head != :error
@@ -32,7 +34,7 @@ function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
 function quit_app(
@@ -47,7 +49,7 @@ function close_window(
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end
@@ -64,7 +66,7 @@ function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
 function quit_app(
@@ -78,7 +80,7 @@ function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
     window::Ptr{Gtk.GLib.GObject})
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end
@@ -94,7 +96,7 @@ function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
 end
@@ -107,14 +109,14 @@ function close_window(
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
 end
@@ -132,7 +134,7 @@ function close_window(
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end
@@ -148,14 +150,14 @@ function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
     window::Ptr{Gtk.GLib.GObject})
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 function close_window(
     widget::Ptr{Gtk.GLib.GObject}, 
     window::Ptr{Gtk.GLib.GObject})
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 end
@@ -179,19 +181,82 @@ function close_window(
     window_ptr::Ptr{Gtk.GLib.GObject})
   window = Gtk.GLib.GObject(window_ptr)
   destroy(window)
-  return 0
+  return nothing::Void
 end
 
 function click_ok(
     widget,
     user_info::UserData)
   println("OK clicked!")
-  return 0
+  return nothing::Void
 end
 
 end
 
 assumed_builder("resources/nothing.ui")
+
+expanding_builder = @GtkBuilderAid verbose begin
+
+@guarded function close_window(
+    widget,
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return nothing::Void
+end
+
+@guarded function click_ok(
+    widget,
+    user_info::UserData)
+  println("OK clicked!")
+  return nothing::Void
+end
+
+end
+expanding_builder("resources/nothing.ui")
+
+# Test that issues can arise with expansion
+test_macro_throws(InferenceException, quote
+@GtkBuilderAid verbose begin
+
+@guarded 1 function close_window(
+    widget,
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return nothing::Void
+end
+
+@guarded 1 function click_ok(
+    widget,
+    user_info::UserData)
+  println("OK clicked!")
+  return nothing::Void
+end
+
+end
+end)
+
+test_macro_throws(InferenceException, quote
+@GtkBuilderAid verbose begin
+
+@guarded function close_window(
+    widget,
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return 1
+end
+
+@guarded function click_ok(
+    widget,
+    user_info::UserData)
+  println("OK clicked!")
+  return 1
+end
+
+end
+end)
 
 # run(test_app)
 
