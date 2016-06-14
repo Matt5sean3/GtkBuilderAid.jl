@@ -58,17 +58,24 @@ function exprResultType(expr)
       end
       result = :Void
     elseif expr.head == :block
-      if length(expr.args) == 0
+      # Filter out line expressions
+      block_args = []
+      for arg in expr.args
+        if !isa(arg, Expr) || arg.head != :line
+          push!(block_args, arg)
+        end
+      end
+      if length(block_args) == 0
         # An empty block returns void
         result = :Void
       else
         # Blocks evaluate to their final argument
-        result = exprResultType(expr.args[end])
+        result = exprResultType(block_args[end])
       end
     end
     # expr.typ = eval(result)
     if(result == nothing)
-      warn("Did not retrieve a result type!")
+      warn("Did not retrieve a result type: $(expr)")
     end
     return result
   else
