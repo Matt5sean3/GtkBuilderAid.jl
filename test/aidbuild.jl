@@ -60,7 +60,7 @@ long_builder("resources/nothing.ui", (test_app, ))
 
 # Show the expanded macro
 # Mostly check that this succeeds
-builder = @GtkBuilderAid verbose userdata(test_app::GtkApplication) "resources/nothing.ui" begin
+builder = @GtkBuilderAid userdata(test_app::GtkApplication) "resources/nothing.ui" begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
@@ -174,7 +174,7 @@ end
 
 signal_connect(activateApp, test_app, :activate, Void, (), false, (test_app, builder))
 
-assumed_builder = @GtkBuilderAid verbose begin
+assumed_builder = @GtkBuilderAid begin
 
 function close_window(
     widget,
@@ -195,7 +195,7 @@ end
 
 assumed_builder("resources/nothing.ui")
 
-expanding_builder = @GtkBuilderAid verbose begin
+expanding_builder = @GtkBuilderAid begin
 
 @guarded function close_window(
     widget,
@@ -217,7 +217,7 @@ expanding_builder("resources/nothing.ui")
 
 # Test that issues can arise with expansion
 test_macro_throws(InferenceException, quote
-@GtkBuilderAid verbose begin
+@GtkBuilderAid begin
 
 @guarded 1 function close_window(
     widget,
@@ -238,7 +238,7 @@ end
 end)
 
 test_macro_throws(InferenceException, quote
-@GtkBuilderAid verbose begin
+@GtkBuilderAid begin
 
 @guarded function close_window(
     widget,

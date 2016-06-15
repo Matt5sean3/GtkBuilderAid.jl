@@ -11,7 +11,7 @@ type SignalConnectionData
 end
 
 # A cfunction to configure connections
-function connectSignals(
+function connectSignalsCFunction(
     builder, 
     object_ptr, 
     signal_name_ptr, 
@@ -54,6 +54,30 @@ function connectSignals(
   end
 
   return nothing
+end
+
+function connectSignals(
+    built::GtkBuilderLeaf, 
+    handlers::Dict{ByteString, FunctionInfo}, 
+    userdata)
+  connector = cfunction(
+      connectSignalsCFunction, 
+      Void, 
+      (
+          Ptr{Gtk.GLib.GObject}, 
+          Ptr{Gtk.GLib.GObject},
+          Ptr{UInt8},
+          Ptr{UInt8},
+          Ptr{Gtk.GLib.GObject},
+          Int,
+          Ptr{Void}))
+  ccall(
+      (:gtk_builder_connect_signals_full, Gtk.libgtk),
+      Void,
+      (Ptr{Gtk.GLib.GObject}, Ptr{Void}, Ptr{Void}), 
+      built, 
+      connector,
+      pointer_from_objref(SignalConnectionData(handlers, userdata)))
 end
 
 """
@@ -198,29 +222,12 @@ macro GtkBuilderAid(args...)
     end
     built = @GtkBuilder(filename=filename)
     
-    handlers = Dict{AbstractString, FunctionInfo}()
+    handlers = Dict{ByteString, FunctionInfo}()
     for func in $(esc(funcdata))
-      handlers[func[2]] = FunctionInfo(func[1], func[3], func[4])
+      handlers[bytestring(func[2])] = FunctionInfo(func[1], func[3], func[4])
     end
 
-    connector = cfunction(
-        connectSignals, 
-        Void, 
-        (
-            Ptr{Gtk.GLib.GObject}, 
-            Ptr{Gtk.GLib.GObject},
-            Ptr{UInt8},
-            Ptr{UInt8},
-            Ptr{Gtk.GLib.GObject},
-            Int,
-            Ptr{Void}))
-    ccall(
-        (:gtk_builder_connect_signals_full, Gtk.libgtk),
-        Void,
-        (Ptr{Gtk.GLib.GObject}, Ptr{Void}, Ptr{Void}), 
-        built, 
-        connector,
-        pointer_from_objref(SignalConnectionData(handlers, userdata)))
+    connectSignals(built, handlers, userdata)
 
     return built
   end
