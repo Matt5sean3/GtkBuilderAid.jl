@@ -75,7 +75,7 @@ function exprResultType(expr)
     end
     # expr.typ = eval(result)
     if(result == nothing)
-      warn("Did not retrieve a result type: $(expr)")
+      throw(InferenceException("Did not retrieve a result type: $(expr)"))
     end
     return result
   else
@@ -93,30 +93,38 @@ function explicitBlockReturnType(block::Expr, line = 0)
     if typeof(arg) <: Expr
       if arg.head == :return
         push!(types, exprResultType(arg.args[1]))
-      elseif arg.head == :call
-        # cannot return within calls, which saves lots of possible issues
-      else
-        # recurse in search of return 
+      elseif arg.head == :block
+        union!(types, explicitBlockReturnType(arg))
+      elseif arg.head == :if
+        union!(types, explicitBlockReturnType(arg.args[2]))
+        if length(arg.args) > 2
+          union!(types, explicitBlockReturnType(arg.args[3]))
+        end
+      elseif arg.head == :while || arg.head == :for
+        union!(types, explicitBlockReturnType(arg.args[2]))
+      elseif arg.head == :try
+        # recurse in search of return type
+        union!(types, explicitBlockReturnType(arg.args[1]))
+        union!(types, explicitBlockReturnType(arg.args[3]))
       end
     end
   end
   return types
 end
 
-function blockReturnType(block, line = 0)
-  explicit_rts = explicitBlockReturnType(block)
-  if length(explicit_rts) > 1
-    throw(InferenceException("ERROR: Multiple explicit return types, $line"))
-  elseif length(explicit_rts) < 1
-    return exprResultType(block)
+function blockReturnType(block)
+  rts = explicitBlockReturnType(block)
+  push!(rts, exprResultType(block))
+  if length(rts) != 1
+    throw(InferenceException("ERROR: Failed to determine return type"))
   else
-    return collect(explicit_rts)[1]
+    return collect(rts)[1]
   end
 end
 
-function functionName(call_expr::Expr, line = 0)
+function functionName(call_expr::Expr)
   if call_expr.head != :call
-    throw(InferenceException("Malformed function declaration, $line"))
+    throw(InferenceException("Malformed function declaration"))
   end
   call_expr.args[1]::Symbol
 end

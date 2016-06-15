@@ -5,7 +5,7 @@ function test_macro_throws(error_type, macroexpr)
   expansion = macroexpand(macroexpr)
   if expansion.head != :error
     warn("Expansion did not throw error")
-    dump(expansion)
+    println(expansion)
     @test false
   end
   if !isa(expansion.args[1], error_type)
@@ -18,11 +18,25 @@ function test_macro_throws(error_type, macroexpr)
 end
 
 test_macro_throws(TypeError, quote 
-@GtkBuilderAid hello
+@GtkBuilderAid helloSymbol
+end)
+
+test_macro_throws(ArgumentError, quote
+@GtkBuilderAid helloExpr()
 end)
 
 test_macro_throws(ArgumentError, quote 
 @GtkBuilderAid 
+end)
+
+test_macro_throws(ErrorException, quote
+@GtkBuilderAid symbolDirective begin
+end
+end)
+
+test_macro_throws(ErrorException, quote
+@GtkBuilderAid badexpr::Directive begin
+end
 end)
 
 test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
@@ -60,7 +74,7 @@ long_builder("resources/nothing.ui", (test_app, ))
 
 # Show the expanded macro
 # Mostly check that this succeeds
-builder = @GtkBuilderAid verbose userdata(test_app::GtkApplication) "resources/nothing.ui" begin
+builder = @GtkBuilderAid userdata(test_app::GtkApplication) "resources/nothing.ui" begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
@@ -92,6 +106,14 @@ builder("$(Pkg.dir("GtkBuilderAid"))/test/resources/nothing.ui")
 # check again but with an explicit name for the builder function
 @GtkBuilderAid function_name(build_nothing) userdata(test_app::GtkApplication) "resources/nothing.ui" begin
 
+function close_window(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return nothing::Void
+end
+
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
@@ -100,6 +122,7 @@ function click_ok(
 end
 
 end
+build_nothing()
 
 # Test non-string file arguments
 base_method_builder = @GtkBuilderAid begin
@@ -174,7 +197,7 @@ end
 
 signal_connect(activateApp, test_app, :activate, Void, (), false, (test_app, builder))
 
-assumed_builder = @GtkBuilderAid verbose begin
+assumed_builder = @GtkBuilderAid begin
 
 function close_window(
     widget,
@@ -195,7 +218,7 @@ end
 
 assumed_builder("resources/nothing.ui")
 
-expanding_builder = @GtkBuilderAid verbose begin
+expanding_builder = @GtkBuilderAid begin
 
 @guarded function close_window(
     widget,
@@ -215,9 +238,13 @@ end
 end
 expanding_builder("resources/nothing.ui")
 
+@test_throws ErrorException expanding_builder("resources/nonexistant.ui")
+
 # Test that issues can arise with expansion
+
+# Test that mismatching return values with the use of guarded causes errors
 test_macro_throws(InferenceException, quote
-@GtkBuilderAid verbose begin
+@GtkBuilderAid begin
 
 @guarded 1 function close_window(
     widget,
@@ -237,8 +264,9 @@ end
 end
 end)
 
+# Test that mismatching return values with the use of guarded causes errors
 test_macro_throws(InferenceException, quote
-@GtkBuilderAid verbose begin
+@GtkBuilderAid begin
 
 @guarded function close_window(
     widget,

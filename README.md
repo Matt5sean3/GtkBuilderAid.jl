@@ -172,7 +172,3 @@ Functions defined with multiple methods are allowable within Julia but introduce
 
 The first argument must always be a GObject. In cases where a GObject is passed as the user data argument the final argument must also be a GObject. Otherwise the user data argument will be a tuple specified using the macro.
 
-### GTK Version
-
-This package requires using `gtk_builder_add_callback_symbols` at the moment which was introduced in GTK version 3.10 which was released in late 2013. Unfortunately, this means distributions released before 2014 may run into difficulties utilizing this package due to binary dependencies. There are plans to rework the library to utilize `gtk_builder_connect_signals_full` instead which has been available since GTK version 2.12 and gives greater control besides.
-
