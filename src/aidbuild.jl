@@ -1,85 +1,4 @@
 
-immutable FunctionInfo
-  func::Function
-  return_type::Type
-  argument_types::Array{Type}
-end
-
-type SignalConnectionData
-  handlers::Dict{AbstractString, FunctionInfo}
-  data
-end
-
-# A cfunction to configure connections
-function connectSignalsCFunction(
-    builder, 
-    object_ptr, 
-    signal_name_ptr, 
-    handler_name_ptr, 
-    connect_object_ptr, 
-    flags, 
-    userdata_ptr)
-
-  userdata = unsafe_pointer_to_objref(userdata_ptr)
-
-  handler_name = bytestring(handler_name_ptr)
-  handler = userdata.handlers[handler_name]
-  
-  if connect_object_ptr == C_NULL
-    # Use the provided 
-    object = Gtk.GLib.GObject(object_ptr)
-    signal_name = bytestring(signal_name_ptr)
-
-    signal_connect(
-        handler.func, 
-        object, 
-        signal_name, 
-        handler.return_type, 
-        (handler.argument_types[2:end - 1]...), 
-        false, 
-        userdata.data)
-  else
-    # Connect the objects directly
-    handler.argument_types[1] = Ptr{Gtk.GLib.GObject}
-    handler.argument_types[end] = Ptr{Gtk.GLib.GObject}
-    ccall(
-        (:g_signal_connect_object, Gtk.libgtk),
-        Culong,
-        (Ptr{Gtk.GLib.GObject}, Ptr{UInt8}, Ptr{Void}, Ptr{Gtk.GLib.GObject}, Gtk.GEnum),
-        object_ptr,
-        signal_name_ptr,
-        cfunction(handler.func, handler.return_type, (handler.argument_types...)),
-        connect_object_ptr,
-        flags)
-  end
-
-  return nothing
-end
-
-function connectSignals(
-    built::GtkBuilderLeaf, 
-    handlers::Dict{ByteString, FunctionInfo}, 
-    userdata)
-  connector = cfunction(
-      connectSignalsCFunction, 
-      Void, 
-      (
-          Ptr{Gtk.GLib.GObject}, 
-          Ptr{Gtk.GLib.GObject},
-          Ptr{UInt8},
-          Ptr{UInt8},
-          Ptr{Gtk.GLib.GObject},
-          Int,
-          Ptr{Void}))
-  ccall(
-      (:gtk_builder_connect_signals_full, Gtk.libgtk),
-      Void,
-      (Ptr{Gtk.GLib.GObject}, Ptr{Void}, Ptr{Void}), 
-      built, 
-      connector,
-      pointer_from_objref(SignalConnectionData(handlers, userdata)))
-end
-
 """
 This macro is meant to make using glade with Julia as easy as working with 
 Glade in C is. From a staticly compiled language the function names are just
@@ -101,7 +20,9 @@ macro GtkBuilderAid(args...)
 
   directives = Set{Symbol}()
 
+  lastDirective = length(args) - 1
   if length(args) >= 2 && isa(args[end - 1], AbstractString)
+    lastDirective -= 1
     # Enables the pre-bound version
     filename = args[end - 1]
     if !isfile(filename)
@@ -113,33 +34,29 @@ macro GtkBuilderAid(args...)
   userdata_tuple = ()
   userdata_tuple_type = Expr(:curly, :Tuple)
   generated_function_name = :genned_function
-  for directive in args[1:end - 1]
-    if typeof(directive) <: Symbol
-      # A symbol directive
-      push!(directives, directive)
-    elseif typeof(directive) <: Expr
-      # An expression directive
-      if directive.head == :call
-        push!(directives, directive.args[1])
-        if directive.args[1] == :userdata
-          # Creates a tuple from the arguments
-          # and uses that as the userinfo argument
-          userdata_tuple = arguments(directive)
-          userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(directive)...)
-          push!(directives, :userdata)
-        end
-
-        if directive.args[1] == :function
-          generated_function_name = directive.args[2]
-        end
-
-        if directive.args[1] == :userdatatype
-          userdata_tuple_type = Expr(:curly, :Tuple, directive.args[2:end]...)
-        end
-
+  for directive in args[1:lastDirective]
+    # Only support expression-style directives
+    if typeof(directive) <: Expr && directive.head == :call
+      # A function call style directive
+      push!(directives, directive.args[1])
+      if directive.args[1] == :userdata
+        # Creates a tuple from the arguments
+        # and uses that as the userinfo argument
+        userdata_tuple = arguments(directive)
+        userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(directive)...)
+        push!(directives, :userdata)
       end
+
+      if directive.args[1] == :function_name
+        generated_function_name = directive.args[2]
+      end
+
+      if directive.args[1] == :userdatatype
+        userdata_tuple_type = Expr(:curly, :Tuple, directive.args[2:end]...)
+      end
+
     else
-      # A different sort of directive
+      throw(ErrorException("Directives must be in the format of a function call"))
     end
   end
 
@@ -176,10 +93,6 @@ macro GtkBuilderAid(args...)
           if isa(firstarg, Symbol)
             callform.args[2] = :($firstarg::Ptr{Gtk.GLib.GObject})
           end
-          # Replaces as necessary
-          # if isa(lastarg, Symbol)
-          #   callform.args[end] = :($lastarg::Any)
-          # end
         end
 
         # A big spot where things can go wrong
@@ -189,13 +102,6 @@ macro GtkBuilderAid(args...)
           throw(DomainError("Function names must be unique, $line"))
         end
         callback_declarations[fdecl.function_name] = fdecl
-        if :verbose in directives
-          println("Adding function: $(fdecl.function_name)")
-          println("Return Type: $(fdecl.return_type)")
-          for fargtype in fdecl.argument_types
-            println("Argument Type: $fargtype")
-          end
-        end
       end
     end
   end

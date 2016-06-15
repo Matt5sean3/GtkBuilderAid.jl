@@ -4,6 +4,10 @@ import GtkBuilderAid: FunctionDeclaration
 # Function inference from code analysis is somewhat difficult
 # The system here aims at determining the type as it would be in C
 # Hopefully typealiases don't give terrible issues
+test_buffer = IOBuffer()
+test_str = bytestring("test error")
+Base.showerror(test_buffer, InferenceException(test_str))
+bytestring(test_buffer.data) == test_str
 
 macro test_macro(args...)
   # mostly, test that the return and argument types are correctly inferred
@@ -24,6 +28,38 @@ end
 @test_throws InferenceException GtkBuilderAid.functionName(:(tups{hello}))
 @test_throws InferenceException GtkBuilderAid.functionName(:(hello, 5, 6))
 @test_throws InferenceException GtkBuilderAid.arguments(:(tupe{hello}))
+@test GtkBuilderAid.explicitBlockReturnType(quote 
+  return 0
+  return 0.0
+end) == Set([symbol(Int), :Float64])
+@test GtkBuilderAid.explicitBlockReturnType(quote 
+  if a > 1
+    return 0
+  end
+  return 0.0
+end) == Set([symbol(Int), :Float64])
+@test GtkBuilderAid.explicitBlockReturnType(quote 
+  if a > 1
+    return 0
+  else
+    return 0.0
+  end
+end) == Set([symbol(Int), :Float64])
+@test GtkBuilderAid.explicitBlockReturnType(quote 
+  while a > 1
+    return 0
+  end
+  return 0.0
+end) == Set([symbol(Int), :Float64])
+
+@test GtkBuilderAid.explicitBlockReturnType(quote 
+  try
+    return 0
+  catch
+    return 0.0
+  end
+end) == Set([symbol(Int), :Float64])
+@test_throws InferenceException GtkBuilderAid.exprResultType(Expr(:brokenexpr))
 
 # Only infers about functions
 @test_throws InferenceException FunctionDeclaration(:(tupe{hello}))
