@@ -18,7 +18,7 @@ end
 @guarded function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
   return nothing::Void
 end
 

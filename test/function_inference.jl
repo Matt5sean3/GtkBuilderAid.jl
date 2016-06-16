@@ -28,6 +28,11 @@ end
 @test_throws InferenceException GtkBuilderAid.functionName(:(tups{hello}))
 @test_throws InferenceException GtkBuilderAid.functionName(:(hello, 5, 6))
 @test_throws InferenceException GtkBuilderAid.arguments(:(tupe{hello}))
+@test_throws InferenceException GtkBuilderAid.blockReturnType(quote 
+  return 0
+  return 0.0
+end)
+
 @test GtkBuilderAid.explicitBlockReturnType(quote 
   return 0
   return 0.0
