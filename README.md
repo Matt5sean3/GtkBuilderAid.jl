@@ -25,7 +25,7 @@ end
 @guarded function quit_app(
     widget,
     user_info::UserData)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
   return nothing::Void
 end
 
@@ -60,6 +60,30 @@ All of the functions defined in the block starting with `builder = @GtkAidBuild`
 Note how the handler for `click_ok` is filled out directly as `click_ok` to match the code above.
 
 ![Glade screenshot showing the application window](doc/resources/glade_example.png)
+
+## User Data Choices
+
+The arguments to the macro preceding the filename and code block generally refine how the macro should behave. The most important of these directives are the user data directives of which there are four. However, user data may also be set within glade using the `User data` field in the `Signals` tab of the widget properties.
+
+### `userdata`
+
+The `userdata` directive takes the form shown in the earlier code block. The default user data is given as the first argument and is annotated with the type for user data.
+
+### `userdata_type`
+
+This format is shown below in the Runtime UI File Selection section of this readme. Only the type is given as the first argument to the `userdata_type` directive.
+
+### `userdata_tuple`
+
+This is a shorthand for using a tuple as the user data type. This directive follows a form similar to the `userdata` directive except that all the arguments are bundled into a tuple with the type determined by the annotated types of the several arguments. As an example, `userdata_tuple(example_app::GtkApplication, example_int::Int)` would provide a tuple with a GtkApplication as the first element and an Int as the second element and uses a tuple composed of `example_app` and `example_int` as the default user data.
+
+### `userdata_tuple_type`
+
+This is a shorthand for using a tuple as the user data type without providing any defaults. It mimics the `userdata_type` directive but bundles all the arguments into a tuple. As an example `userdata_tuple_type(GtkApplication, Int)` would operate identically to `userdata_type(Tuple{GtkApplication, Int})`.
+
+### Glade User data
+
+In cases where the user data is set in glade, the user data type will be `Ptr{Gtk.GLib.GObject}` and should be explicitly annotated as such. In the code block above this is demonstrated with the `close_window` function.
 
 ## Type Annotation
 In order for this macro to work correctly, types must be annotated and there cannot be any ambiguity in the return type. A certain degree of type inference is built into this package, but is limited overall. In this way, all return expressions in a function that cannot be directly inferred need to be made explicit.
@@ -98,7 +122,7 @@ The example above could be rewritten slightly to enable selecting the either or 
 ```julia
 example_app = @GtkApplication("com.github.example", 0)
 
-builder = @GtkBuilderAid userdatatype(GtkApplication) begin
+builder = @GtkBuilderAid userdata_type(GtkApplication) begin
 
 @guarded function click_ok(
     widget,
@@ -110,7 +134,7 @@ end
 @guarded function quit_app(
     widget,
     user_info::UserData)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
   return nothing::Void
 end
 

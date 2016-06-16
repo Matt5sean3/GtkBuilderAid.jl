@@ -42,7 +42,7 @@ end)
 test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
 
 # Try out known userdata with 
-long_builder = @GtkBuilderAid userdatatype(GtkApplication) begin
+long_builder = @GtkBuilderAid userdata_type(GtkApplication) begin
 
 function click_ok(
     widget::Ptr{Gtk.GLib.GObject}, 
@@ -54,7 +54,7 @@ end
 function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
   return nothing::Void
 end
 
@@ -70,7 +70,7 @@ end
 
 @test_throws MethodError long_builder()
 @test_throws MethodError long_builder("resources/nothing.ui")
-long_builder("resources/nothing.ui", (test_app, ))
+long_builder("resources/nothing.ui", test_app)
 
 # Show the expanded macro
 # Mostly check that this succeeds
@@ -86,7 +86,7 @@ end
 function quit_app(
     widget::Ptr{Gtk.GLib.GObject}, 
     user_info::UserData)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
   return nothing::Void
 end
 

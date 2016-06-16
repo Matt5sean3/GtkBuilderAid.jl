@@ -31,28 +31,40 @@ macro GtkBuilderAid(args...)
     push!(directives, :filename)
   end
 
-  userdata_tuple = ()
-  userdata_tuple_type = Expr(:curly, :Tuple)
+  userdata = ()
+  userdata_type = Expr(:curly, :Tuple)
   generated_function_name = :genned_function
   for directive in args[1:lastDirective]
     # Only support expression-style directives
     if typeof(directive) <: Expr && directive.head == :call
       # A function call style directive
       push!(directives, directive.args[1])
-      if directive.args[1] == :userdata
-        # Creates a tuple from the arguments
-        # and uses that as the userinfo argument
-        userdata_tuple = arguments(directive)
-        userdata_tuple_type = Expr(:curly, :Tuple, argumentTypes(directive)...)
-        push!(directives, :userdata)
-      end
-
       if directive.args[1] == :function_name
         generated_function_name = directive.args[2]
       end
 
-      if directive.args[1] == :userdatatype
-        userdata_tuple_type = Expr(:curly, :Tuple, directive.args[2:end]...)
+      if directive.args[1] == :userdata
+        push!(directives, :userdata_type)
+        userdata = arguments(directive).args[1]
+        userdata_type = argumentTypes(directive)[1]
+      end
+
+      if directive.args[1] == :userdata_type
+        userdata_type = directive.args[2]
+      end
+
+      if directive.args[1] == :userdata_tuple
+        # Creates a tuple from the arguments
+        # and uses that as the userinfo argument
+        push!(directives, :userdata)
+        push!(directives, :userdata_type)
+        userdata = arguments(directive)
+        userdata_type = Expr(:curly, :Tuple, argumentTypes(directive)...)
+      end
+
+      if directive.args[1] == :userdata_tuple_type
+        push!(directives, :userdata_type)
+        userdata_type = Expr(:curly, :Tuple, directive.args[2:end]...)
       end
 
     else
@@ -64,7 +76,7 @@ macro GtkBuilderAid(args...)
   callback_declarations = Dict{Symbol, FunctionDeclaration}();
 
   # Emulate a typealias
-  replaceSymbol!(user_block, :UserData, userdata_tuple_type)
+  replaceSymbol!(user_block, :UserData, userdata_type)
 
   line = 0
   for entry in user_block.args
@@ -144,14 +156,15 @@ macro GtkBuilderAid(args...)
     final_function_name = generated_function_name
   end
 
-  filename_arg = Expr(:(::), :filename, :AbstractString)
+  filename_arg = :(filename::AbstractString)
+  userdata_arg = :(userdata::$userdata_type)
+
   if :filename in directives
     filename_arg = Expr(:kw, filename_arg, filename)
   end
 
-  userdata_arg = Expr(:(::), :userdata, userdata_tuple_type)
-  if !(:userdatatype in directives)
-    userdata_arg = Expr(:kw, userdata_arg, esc(userdata_tuple))
+  if !(:userdata_type in directives) || :userdata in directives
+    userdata_arg = Expr(:kw, userdata_arg, esc(userdata))
   end
 
   funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg)), block)
