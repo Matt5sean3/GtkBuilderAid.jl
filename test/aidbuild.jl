@@ -72,6 +72,32 @@ end
 @test_throws MethodError long_builder("resources/nothing.ui")
 long_builder("resources/nothing.ui", test_app)
 
+long_builder2 = @GtkBuilderAid userdata_tuple_type(GtkApplication) begin
+
+function click_ok(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::UserData)
+  println("OK clicked!")
+  return nothing::Void
+end
+
+function quit_app(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::UserData)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  return nothing::Void
+end
+
+function close_window(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    window_ptr::Ptr{Gtk.GLib.GObject})
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return nothing::Void
+end
+
+end
+
 # Show the expanded macro
 # Mostly check that this succeeds
 builder = @GtkBuilderAid userdata(test_app::GtkApplication) "resources/nothing.ui" begin
@@ -102,6 +128,31 @@ end
 builder()
 # Also check that the unbound form works
 builder("$(Pkg.dir("GtkBuilderAid"))/test/resources/nothing.ui")
+
+builder2 = @GtkBuilderAid userdata_tuple(test_app::GtkApplication) "resources/nothing.ui" begin
+
+function click_ok(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::UserData)
+  println("OK clicked!")
+  return nothing::Void
+end
+
+function quit_app(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    user_info::UserData)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  return nothing::Void
+end
+
+function close_window(
+    widget::Ptr{Gtk.GLib.GObject}, 
+    window::Ptr{Gtk.GLib.GObject})
+  destroy(window)
+  return nothing::Void
+end
+
+end
 
 # check again but with an explicit name for the builder function
 @GtkBuilderAid function_name(build_nothing) userdata(test_app::GtkApplication) "resources/nothing.ui" begin
