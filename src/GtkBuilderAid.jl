@@ -1,8 +1,8 @@
 
 
 module GtkBuilderAid
-
 using Gtk
+using Compat
 
 export @GtkBuilderAid
 

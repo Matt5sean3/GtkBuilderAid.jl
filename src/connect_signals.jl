@@ -28,7 +28,7 @@ function gtype_to_jtype(t::Gtk.GLib.GType)
   return Ptr{Void}
 end
 
-function query_signal(obj::GObject, signal_name::ByteString)
+function query_signal(obj::GObject, signal_name::Compat.String)
   obj_class = Gtk.GLib.G_OBJECT_CLASS_TYPE(obj)
   signal_id = ccall(
     (:g_signal_lookup, Gtk.GLib.libgobject),
@@ -46,18 +46,19 @@ function query_signal(obj::GObject, signal_name::ByteString)
   return SignalInfo(
     gtype_to_jtype(result[].itype),
     gtype_to_jtype(result[].return_type),
-    [gtype_to_jtype(gtype) for gtype in pointer_to_array(
+    [gtype_to_jtype(gtype) for gtype in unsafe_wrap(Array,
       result[].param_types, 
       result[].n_params)])
 end
 
 type SignalConnectionData
-  handlers::Dict{AbstractString, Function}
+  handlers::Dict{Compat.AbstractString, Function}
   data
 end
 
 # A cfunction to configure connections
-@guarded function connectSignalsCFunction(
+# The cfunction version runs but the julia version doesn't
+function connectSignalsCFunction(
     builder, 
     object_ptr, 
     signal_name_ptr, 
@@ -67,29 +68,44 @@ end
     userdata_ptr)
   userdata = unsafe_pointer_to_objref(userdata_ptr)
 
-  handler_name = bytestring(handler_name_ptr)
+  handler_name = unsafe_string(handler_name_ptr)
+  if !(handler_name in keys(userdata.handlers))
+    warn("Signal handler, $handler_name, could not be found")
+    return nothing
+  end
   handler = userdata.handlers[handler_name]
-  
+
   object = Gtk.GLib.GObject(object_ptr)
-  signal_name = bytestring(signal_name_ptr)
+  signal_name = unsafe_string(signal_name_ptr)
   signal_info = query_signal(object, signal_name)
   if connect_object_ptr == C_NULL
     # Use the provided 
-
-    signal_connect(
-        handler, 
-        object, 
-        signal_name, 
-        signal_info.return_type, 
-        (signal_info.parameter_types...), 
-        false, 
-        userdata.data)
+    try
+      signal_connect(
+          handler, 
+          object, 
+          signal_name, 
+          signal_info.return_type, 
+          (signal_info.parameter_types...), 
+          false, 
+          userdata.data)
+    catch err
+      warn("Signal connection failed")
+      warn(err)
+    end
   else
     # Connect the objects directly
     argument_array = copy(signal_info.parameter_types)
     unshift!(argument_array, Ptr{Gtk.GObject})
     push!(argument_array, Ptr{Gtk.GObject})
     argument_types = tuple(argument_array...)
+    cptr = C_NULL
+    try
+      cptr = cfunction(handler, signal_info.return_type, argument_types)
+    catch err
+      warn("CFunction conversion failed")
+      warn(err)
+    end
     ccall(
         (:g_signal_connect_object, Gtk.libgtk),
         Culong,
@@ -101,7 +117,7 @@ end
           Gtk.GEnum),
         object_ptr,
         signal_name_ptr,
-        cfunction(handler, signal_info.return_type, argument_types),
+        cptr,
         connect_object_ptr,
         flags)
   end
@@ -111,7 +127,7 @@ end
 
 function connectSignals(
     built::GtkBuilderLeaf, 
-    handlers::Dict{ByteString, Function}, 
+    handlers::Dict{Compat.String, Function}, 
     userdata)
   connector = cfunction(
       connectSignalsCFunction, 
