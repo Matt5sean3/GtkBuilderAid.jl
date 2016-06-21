@@ -12,6 +12,5 @@ push!(dummy_box, dummy_button_box)
 push!(dummy_button_box, @GtkButton("dummy"))
 destroy(dummy)
 
-include("function_inference.jl")
 include("aidbuild.jl")
 
