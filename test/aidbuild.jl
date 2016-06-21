@@ -39,8 +39,29 @@ end)
 
 test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
 
+# Check that an empty builder doesn't crash
+@GtkBuilderAid function_name(empty_builder) begin
+
+end
+empty_builder("resources/nothing.ui", test_app)
+
+# Check that a poorly made builder doesn't crash
+@GtkBuilderAid function_name(poor_builder) begin
+
+function click_ok()
+end
+
+function quit_app()
+end
+
+function close_window()
+end
+
+end
+poor_builder("resources/nothing.ui", test_app)
+
 # Try out known userdata with 
-long_builder = @GtkBuilderAid begin
+@GtkBuilderAid function_name(long_builder) begin
 
 function click_ok(
     widget, 
@@ -71,7 +92,7 @@ long_builder("resources/nothing.ui", test_app)
 
 # Show the expanded macro
 # Mostly check that this succeeds
-builder = @GtkBuilderAid userdata(test_app) "resources/nothing.ui" begin
+@GtkBuilderAid function_name(builder) userdata(test_app) "resources/nothing.ui" begin
 
 function click_ok(
     widget,
@@ -100,7 +121,7 @@ builder()
 # Also check that the unbound form works
 builder("$(Pkg.dir("GtkBuilderAid"))/test/resources/nothing.ui")
 
-tuple_builder = @GtkBuilderAid userdata_tuple(test_app::GtkApplication) "resources/nothing.ui" begin
+@GtkBuilderAid function_name(tuple_builder) userdata_tuple(test_app::GtkApplication) "resources/nothing.ui" begin
 
 function click_ok(
     widget,
@@ -147,7 +168,7 @@ end
 build_nothing()
 
 # Test non-string file arguments
-base_method_builder = @GtkBuilderAid begin
+@GtkBuilderAid function_name(base_method_builder) begin
 
 function close_window(
     widget,

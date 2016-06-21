@@ -116,9 +116,9 @@ macro GtkBuilderAid(args...)
     end
     built = @GtkBuilder(filename=filename)
     
-    handlers = Dict{ByteString, Function}()
+    handlers = Dict{Compat.String, Function}()
     for func in $(esc(funcdata))
-      handlers[bytestring(func[2])] = func[1]
+      handlers[string(func[2])] = func[1]
     end
 
     connectSignals(built, handlers, userdata)
@@ -127,19 +127,28 @@ macro GtkBuilderAid(args...)
   end
 
   if :function_name in directives
-    final_function_name = :($(esc(generated_function_name)))
+    final_function_name = esc(generated_function_name)
   else
     final_function_name = generated_function_name
   end
 
-  filename_arg = :(filename::AbstractString)
-  userdata_arg = :userdata
+  filename_arg = :filename
+  userdata_arg = Expr(:kw, :userdata, esc(userdata))
 
   if :filename in directives
     filename_arg = Expr(:kw, filename_arg, filename)
   end
 
-  funcdef = Expr(:function, :($final_function_name($filename_arg, userdata=$(esc(userdata)))), block)
+  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg)), block)
 
-  return funcdef
+  # For some reason scope seems to be killing me now
+  if :function_name in directives
+    return funcdef
+  else
+    return quote
+      $funcdef
+      $final_function_name
+    end
+  end
+
 end
