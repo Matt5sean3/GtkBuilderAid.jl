@@ -1,5 +1,6 @@
 using GtkBuilderAid
 using Gtk
+using Cairo
 using Base.Test
 
 # Force loading a few things into memory
