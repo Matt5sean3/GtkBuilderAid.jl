@@ -3,7 +3,7 @@
 using Gtk
 using GtkBuilderAid
 
-example_app = @GtkApplication("com.github.example", 0)
+example_app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
 
 builder = @GtkBuilderAid userdata(example_app) begin
 

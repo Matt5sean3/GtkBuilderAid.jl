@@ -15,6 +15,11 @@ immutable SignalInfo
   parameter_types::Array{Type}
 end
 
+# Not all types were already covered so add in an auxiliary case
+const more_types = Dict{Symbol, Type}(
+  :GdkEvent => Ptr{Gtk.GdkEvent},
+  :GdkEventButton => Ptr{Gtk.GdkEventButton});
+
 function gtype_to_jtype(t::Gtk.GLib.GType)
   for (i, id) in enumerate(Gtk.GLib.fundamental_ids)
     if id == t
@@ -24,6 +29,9 @@ function gtype_to_jtype(t::Gtk.GLib.GType)
   typename = Gtk.GLib.g_type_name(t)
   if typename in keys(Gtk.GLib.gtype_wrappers)
     return Ptr{Gtk.GLib.gtype_abstracts[typename]}
+  end
+  if typename in keys(more_types)
+    return more_types[typename]
   end
   return Ptr{Void}
 end
@@ -90,7 +98,7 @@ function connectSignalsCFunction(
           false, 
           userdata.data)
     catch err
-      warn("Signal connection failed")
+      warn("Signal connection failed; signal, $signal_name; handler, $handler_name")
       warn(err)
     end
   else
@@ -103,7 +111,7 @@ function connectSignalsCFunction(
     try
       cptr = cfunction(handler, signal_info.return_type, argument_types)
     catch err
-      warn("CFunction conversion failed")
+      warn("CFunction conversion failed; signal, $signal_name; handler, $handler_name")
       warn(err)
     end
     ccall(
