@@ -3,31 +3,33 @@
 using Gtk
 using GtkBuilderAid
 
-example_app = @GtkApplication("com.github.example", 0)
+example_app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
 
-builder = @GtkBuilderAid userdata(example_app::GtkApplication) begin
+builder = @GtkBuilderAid userdata(example_app) begin
 
 @guarded function click_ok(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    evt::Ptr{Gtk.GdkEventButton}, 
-    user_info::UserData)
+    widget, 
+    user_info)
   println("OK clicked!")
-  return nothing::Void
+  return nothing
 end
 
 @guarded function quit_app(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    user_info::UserData)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
-  return nothing::Void
+    widget, 
+    user_info)
+  ccall(
+      (:g_application_quit, Gtk.libgtk), 
+      Void, 
+      (Ptr{Gtk.GLib.GObject}, ), 
+      user_info)
+  return nothing
 end
 
 @guarded function close_window(
-    widget::Ptr{Gtk.GLib.GObject}, 
-    window_ptr::Ptr{Gtk.GLib.GObject})
-  window = Gtk.GLib.GObject(window_ptr)
-  destroy(window)
-  return nothing::Void
+    widget, 
+    window)
+  destroy(Gtk.GObject(window))
+  return nothing
 end
 
 end
@@ -44,3 +46,4 @@ end
 signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
 
 run(example_app)
+

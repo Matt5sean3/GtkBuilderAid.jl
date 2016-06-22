@@ -17,24 +17,24 @@ builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/main.u
 
 @guarded function click_ok(
     widget, 
-    user_info::UserData)
+    user_info)
   println("OK clicked!")
-  return nothing::Void
+  return nothing
 end
 
 @guarded function quit_app(
     widget,
-    user_info::UserData)
+    user_info)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
-  return nothing::Void
+  return nothing
 end
 
 @guarded function close_window(
     widget,
-    window_ptr::Ptr{Gtk.GLib.GObject})
+    window_ptr)
   window = convert(Gtk.GObject, window_ptr)
   destroy(window)
-  return nothing::Void
+  return nothing
 end
 
 end
@@ -69,52 +69,13 @@ The arguments to the macro preceding the filename and code block generally refin
 
 The `userdata` directive takes the form shown in the earlier code block. The default user data is given as the first argument and is annotated with the type for user data.
 
-### `userdata_type`
-
-This format is shown below in the Runtime UI File Selection section of this readme. Only the type is given as the first argument to the `userdata_type` directive.
-
 ### `userdata_tuple`
 
-This is a shorthand for using a tuple as the user data type. This directive follows a form similar to the `userdata` directive except that all the arguments are bundled into a tuple with the type determined by the annotated types of the several arguments. As an example, `userdata_tuple(example_app::GtkApplication, example_int::Int)` would provide a tuple with a GtkApplication as the first element and an Int as the second element and uses a tuple composed of `example_app` and `example_int` as the default user data.
-
-### `userdata_tuple_type`
-
-This is a shorthand for using a tuple as the user data type without providing any defaults. It mimics the `userdata_type` directive but bundles all the arguments into a tuple. As an example `userdata_tuple_type(GtkApplication, Int)` would operate identically to `userdata_type(Tuple{GtkApplication, Int})`.
+This is a shorthand for using a tuple as the user data type. This directive follows a form similar to the `userdata` directive except that all the arguments are bundled into a tuple with the type determined by the annotated types of the several arguments. As an example, `userdata_tuple(example_app, example_int)` would provide a tuple with `example_app` as the first element and `example_int` as the second element as the default user data.
 
 ### Glade User data
 
-In cases where the user data is set in glade, the user data type will be `Ptr{Gtk.GLib.GObject}` and should be explicitly annotated as such. In the code block above this is demonstrated with the `close_window` function.
-
-## Type Annotation
-In order for this macro to work correctly, types must be annotated and there cannot be any ambiguity in the return type. A certain degree of type inference is built into this package, but is limited overall. In this way, all return expressions in a function that cannot be directly inferred need to be made explicit.
-
-### Explicit Type Annotation
-
-An example of a sufficiently typed function is shown below. Most of the time the types annotated will be similar to those used in the [wrapper library's](https://github.com/JuliaLang/Gtk.jl), `signal_connect` function.
-
-```julia
-function click_ok(
-    widget,
-    user_info::UserData)
-  println("OK Clicked")
-  return nothing::Void
-end
-```
-
-Note especially, that Int, not Int64 or Int32, is used in this case because that type needs to vary depending on CPU architecture. The first argument does not require type annotation because it is assumed to always be a `Ptr{Gtk.GLib.GObject}`. Also note that the UserData type is not necessarily explicitly defined but is replaced by the macro when necessary but this substitution is imperfect. When the UI file specifies a `GObject` as the userdata for a handler, the `user_info` argument would be annotated as `Ptr{Gtk.GLib.GObject}`.
-
-### Type Inference
-
-Examining the code allows certain guesses to be performed. Basic types, such as integers and strings that can be identified as such with minimal work from within a macro are automatically determined. Ideally, with changes to the code, Julia's internal, far more advanced, type inference system could be used to determine the resulting return types. This allows the same function from above to be written a little more simply as shown.
-
-```julia
-function click_ok(
-    widget,
-    user_info::UserData)
-  println("OK Clicked")
-  return nothing::Void
-end
-```
+In cases where the user data is set in glade, the user data type will be a pointer to a `GObject`. In the code block above this is demonstrated with the `close_window` function which will receive a pointer to the window object as its user data argument.
 
 ## Runtime UI File Selection
 The example above could be rewritten slightly to enable selecting the either or both of the filename or userdata at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and userdata options are set for the macro the method allowing selection of the UI file and userdata will still be available. However, the types for the userdata must still be available at compile time.
@@ -122,18 +83,18 @@ The example above could be rewritten slightly to enable selecting the either or 
 ```julia
 example_app = @GtkApplication("com.github.example", 0)
 
-builder = @GtkBuilderAid userdata_type(GtkApplication) begin
+builder = @GtkBuilderAid begin
 
 @guarded function click_ok(
     widget,
-    user_info::UserData)
+    user_info)
   println("OK clicked!")
   return nothing::Void
 end
 
 @guarded function quit_app(
     widget,
-    user_info::UserData)
+    user_info)
   ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
   return nothing::Void
 end
@@ -164,35 +125,19 @@ run(example_app)
 
 ## Additional Considerations
 
-### If Blocks
-When an `if` statement is the final statement of a function block or an `if` statement is returned using the `return` keyword the resulting type can be ambiguous. When this situation arises either ensure that the `if` statement is not the returning expression or ensure that there is an `else` block that can be inferred to return the same type as the `if` block. This principle also extends through to `elseif` cases which will still need a concluding `else` block for inference purposes.
-
-### Loop Blocks
-Whenever a loop block such as `for` or `while` is used they will always return `Void()` which can be accurately inferred by this package.
-
-### Try-Catch Blocks
-When a try-catch block is used it behaves much like an if-then block. The type of the resulting value needs to match both for the try and the catch blocks. In the case that the catch block is omitted, the resulting type of the implicit catch block is Void.
-
-### Void() != nothing
-The `nothing` keyword can be overwritten to a different value than `Void()`. This means that even though `nothing` is generally considered to be the `Void` singleton that's not necessarily an accurate assumption. This means that even when `nothing` is returned directly annotation is still necessary.
-
 ### Macros
 
-Some macros at the first layer of the block processed by the `@GtkBuilderAid` macro are manually expanded during analysis of that block. The expansion will be kept and used for analysis in the case that the expanded expression is a function definition. Macros that don't result in function definitions will be left to expand as they would have otherwise. This expansion works well enough for simple macros such as the Gtk wrapper library's `@guarded` macro but has the potential to cause complications in more complex macros.
+Some macros at the first layer of the block processed by the `@GtkBuilderAid` macro are manually expanded during analysis of that block. The expansion will be kept and added to the list of signals in the case that the expanded expression is a function definition. Macros that don't result in function definitions will be left to expand as they would have otherwise. This expansion works well enough for simple macros such as the Gtk wrapper library's `@guarded` macro but has the potential to cause complications in more complex macros.
 
 ### Nested Blocks
 
-Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions
+Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
 
 ### Functions Defined Using Shorthand
 
 Functions defined using the equals operator will not be converted to cfunctions or be accessible as signal handlers. This will probably change in future versions so don't depend upon this behaviour.
 
-### Multiple Function Methods
+### Multiple Dispatch
 
-Functions defined with multiple methods are allowable within Julia but introduce ambiguity when interacting with C. For this reason, defining multiple methods for the same function is disallowed within the macro.
-
-### Argument Type Assumptions
-
-The first argument must always be a GObject. In cases where a GObject is passed as the user data argument the final argument must also be a GObject. Otherwise the user data argument will be a tuple specified using the macro.
+Multiple dispatch should work correctly if multiple methods with different arguments are defined.
 

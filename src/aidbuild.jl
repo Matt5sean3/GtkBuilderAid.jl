@@ -1,4 +1,14 @@
 
+function arguments(call_expr::Expr, line = 0)
+  if call_expr.head != :call
+    throw(InferenceException("Malformed function declaration, $line"))
+  end
+  call_expr = copy(call_expr)
+  call_expr.head = :tuple
+  shift!(call_expr.args)
+  return call_expr
+end
+
 """
 This macro is meant to make using glade with Julia as easy as working with 
 Glade in C is. From a staticly compiled language the function names are just
@@ -32,7 +42,6 @@ macro GtkBuilderAid(args...)
   end
 
   userdata = ()
-  userdata_type = Expr(:curly, :Tuple)
   generated_function_name = :genned_function
   for directive in args[1:lastDirective]
     # Only support expression-style directives
@@ -44,27 +53,14 @@ macro GtkBuilderAid(args...)
       end
 
       if directive.args[1] == :userdata
-        push!(directives, :userdata_type)
         userdata = arguments(directive).args[1]
-        userdata_type = argumentTypes(directive)[1]
-      end
-
-      if directive.args[1] == :userdata_type
-        userdata_type = directive.args[2]
       end
 
       if directive.args[1] == :userdata_tuple
         # Creates a tuple from the arguments
         # and uses that as the userinfo argument
         push!(directives, :userdata)
-        push!(directives, :userdata_type)
         userdata = arguments(directive)
-        userdata_type = Expr(:curly, :Tuple, argumentTypes(directive)...)
-      end
-
-      if directive.args[1] == :userdata_tuple_type
-        push!(directives, :userdata_type)
-        userdata_type = Expr(:curly, :Tuple, directive.args[2:end]...)
       end
 
     else
@@ -73,10 +69,7 @@ macro GtkBuilderAid(args...)
   end
 
   # Analogous to function declarations of a C header file
-  callback_declarations = Dict{Symbol, FunctionDeclaration}();
-
-  # Emulate a typealias
-  replaceSymbol!(user_block, :UserData, userdata_type)
+  callbacks = Set{Symbol}();
 
   line = 0
   for entry in user_block.args
@@ -96,39 +89,22 @@ macro GtkBuilderAid(args...)
       end
 
       if entry.head == :function
-
-        # Modify the first argument to be a Ptr{Gtk.GLib.GObject}
-        callform = entry.args[1]
-        if(isa(callform, Expr) && callform.head == :call)
-          firstarg = callform.args[2]
-          lastarg = callform.args[end]
-          if isa(firstarg, Symbol)
-            callform.args[2] = :($firstarg::Ptr{Gtk.GLib.GObject})
-          end
-        end
-
-        # A big spot where things can go wrong
-        fdecl = FunctionDeclaration(entry)
-
-        if fdecl.function_name in keys(callback_declarations)
-          throw(DomainError("Function names must be unique, $line"))
-        end
-        callback_declarations[fdecl.function_name] = fdecl
+        # Just grab the function's name
+        fcall = entry.args[1]
+        fname = fcall.args[1]
+        # Can support multiple function methods now
+        push!(callbacks, fname)
       end
     end
   end
 
   funcdata = Expr(:vect)
-  for fdecl in values(callback_declarations)
+  for fname in callbacks
     # [1] function symbol
     # [2] function string name
-    # [3] function return type
-    # [4] function argument types
     push!(funcdata.args, Expr(:tuple, 
-        fdecl.function_name,
-        string(fdecl.function_name),
-        fdecl.return_type,
-        Expr(:vect, fdecl.argument_types...)))
+        fname,
+        string(fname)))
   end
 
   # Escape the modified user block
@@ -140,39 +116,39 @@ macro GtkBuilderAid(args...)
     end
     built = @GtkBuilder(filename=filename)
     
-    handlers = Dict{ByteString, FunctionInfo}()
+    handlers = Dict{Compat.String, Function}()
     for func in $(esc(funcdata))
-      handlers[bytestring(func[2])] = FunctionInfo(func[1], func[3], func[4])
+      handlers[string(func[2])] = func[1]
     end
 
-    connectSignals(built, handlers, userdata)
+    connectSignals(built, handlers, userdata; wpipe=wpipe)
 
     return built
   end
 
   if :function_name in directives
-    final_function_name = :($(esc(generated_function_name)))
+    final_function_name = esc(generated_function_name)
   else
     final_function_name = generated_function_name
   end
 
-  filename_arg = :(filename::AbstractString)
-  userdata_arg = :(userdata::$userdata_type)
+  filename_arg = :filename
+  userdata_arg = Expr(:kw, :userdata, esc(userdata))
 
   if :filename in directives
     filename_arg = Expr(:kw, filename_arg, filename)
   end
 
-  if !(:userdata_type in directives) || :userdata in directives
-    userdata_arg = Expr(:kw, userdata_arg, esc(userdata))
+  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR)), block)
+
+  # For some reason scope seems to be killing me now
+  if :function_name in directives
+    return funcdef
+  else
+    return quote
+      $funcdef
+      $final_function_name
+    end
   end
 
-  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg)), block)
-
-  ret = quote
-    $funcdef
-    $final_function_name
-  end
-
-  return ret
 end
