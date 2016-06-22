@@ -121,7 +121,7 @@ macro GtkBuilderAid(args...)
       handlers[string(func[2])] = func[1]
     end
 
-    connectSignals(built, handlers, userdata)
+    connectSignals(built, handlers, userdata; wpipe=wpipe)
 
     return built
   end
@@ -139,7 +139,7 @@ macro GtkBuilderAid(args...)
     filename_arg = Expr(:kw, filename_arg, filename)
   end
 
-  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg)), block)
+  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR)), block)
 
   # For some reason scope seems to be killing me now
   if :function_name in directives

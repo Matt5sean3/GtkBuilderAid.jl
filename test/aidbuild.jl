@@ -1,4 +1,6 @@
 
+nullio = IOBuffer(0)
+
 function test_macro_throws(error_type, macroexpr)
   expansion = macroexpand(macroexpr)
   if expansion.head != :error
@@ -43,7 +45,7 @@ test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
 @GtkBuilderAid function_name(empty_builder) begin
 
 end
-empty_builder("resources/nothing.ui", test_app)
+empty_builder("resources/nothing.ui", test_app; wpipe=nullio)
 
 # Check that a poorly made builder doesn't crash
 @GtkBuilderAid function_name(poor_builder) begin
@@ -58,7 +60,7 @@ function close_window()
 end
 
 end
-poor_builder("resources/nothing.ui", test_app)
+poor_builder("resources/nothing.ui", test_app; wpipe=nullio)
 
 # Try out known userdata with 
 @GtkBuilderAid function_name(long_builder) begin

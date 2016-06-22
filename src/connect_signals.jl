@@ -60,8 +60,9 @@ function query_signal(obj::GObject, signal_name::Compat.String)
 end
 
 type SignalConnectionData
-  handlers::Dict{Compat.AbstractString, Function}
+  handlers::Dict{Compat.String, Function}
   data
+  warn_pipe::IO
 end
 
 # A cfunction to configure connections
@@ -75,10 +76,11 @@ function connectSignalsCFunction(
     flags, 
     userdata_ptr)
   userdata = unsafe_pointer_to_objref(userdata_ptr)
+  wpipe = userdata.warn_pipe
 
   handler_name = unsafe_string(handler_name_ptr)
   if !(handler_name in keys(userdata.handlers))
-    warn("Signal handler, $handler_name, could not be found")
+    warn(wpipe, "Signal handler, $handler_name, could not be found")
     return nothing
   end
   handler = userdata.handlers[handler_name]
@@ -98,8 +100,8 @@ function connectSignalsCFunction(
           false, 
           userdata.data)
     catch err
-      warn("Signal connection failed; signal, $signal_name; handler, $handler_name")
-      warn(err)
+      warn(wpipe, "Signal connection failed; signal, $signal_name; handler, $handler_name")
+      warn(wpipe, err)
     end
   else
     # Connect the objects directly
@@ -110,24 +112,24 @@ function connectSignalsCFunction(
     cptr = C_NULL
     try
       cptr = cfunction(handler, signal_info.return_type, argument_types)
+      ccall(
+          (:g_signal_connect_object, Gtk.libgtk),
+          Culong,
+          (
+            Ptr{Gtk.GLib.GObject}, 
+            Ptr{UInt8}, 
+            Ptr{Void}, 
+            Ptr{Gtk.GLib.GObject}, 
+            Gtk.GEnum),
+          object_ptr,
+          signal_name_ptr,
+          cptr,
+          connect_object_ptr,
+          flags)
     catch err
-      warn("CFunction conversion failed; signal, $signal_name; handler, $handler_name")
-      warn(err)
+      warn(wpipe, "CFunction conversion failed; signal, $signal_name; handler, $handler_name")
+      warn(wpipe, err)
     end
-    ccall(
-        (:g_signal_connect_object, Gtk.libgtk),
-        Culong,
-        (
-          Ptr{Gtk.GLib.GObject}, 
-          Ptr{UInt8}, 
-          Ptr{Void}, 
-          Ptr{Gtk.GLib.GObject}, 
-          Gtk.GEnum),
-        object_ptr,
-        signal_name_ptr,
-        cptr,
-        connect_object_ptr,
-        flags)
   end
 
   return nothing
@@ -136,7 +138,8 @@ end
 function connectSignals(
     built::GtkBuilderLeaf, 
     handlers::Dict{Compat.String, Function}, 
-    userdata)
+    userdata;
+    wpipe=Base.STDERR)
   connector = cfunction(
       connectSignalsCFunction, 
       Void, 
@@ -154,5 +157,5 @@ function connectSignals(
       (Ptr{Gtk.GLib.GObject}, Ptr{Void}, Ptr{Void}), 
       built, 
       connector,
-      pointer_from_objref(SignalConnectionData(handlers, userdata)))
+      pointer_from_objref(SignalConnectionData(handlers, userdata, wpipe)))
 end
