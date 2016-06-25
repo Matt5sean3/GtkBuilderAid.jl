@@ -2,11 +2,11 @@
 immutable GSignalQuery
   signal_id::Cuint
   signal_name::Ptr{Int8}
-  itype::Gtk.GLib.GType
-  signal_flags::Gtk.GLib.GEnum
-  return_type::Gtk.GLib.GType
+  itype::Gtk.GType
+  signal_flags::Gtk.GEnum
+  return_type::Gtk.GType
   n_params::Cuint
-  param_types::Ptr{Gtk.GLib.GType}
+  param_types::Ptr{Gtk.GType}
 end
 
 immutable SignalInfo
@@ -20,7 +20,7 @@ const more_types = Dict{Symbol, Type}(
   :GdkEvent => Ptr{Gtk.GdkEvent},
   :GdkEventButton => Ptr{Gtk.GdkEventButton});
 
-function gtype_to_jtype(t::Gtk.GLib.GType)
+function gtype_to_jtype(t::Gtk.GType)
   for (i, id) in enumerate(Gtk.GLib.fundamental_ids)
     if id == t
       return Gtk.GLib.fundamental_types[i][2]
@@ -39,14 +39,14 @@ end
 function query_signal(obj::GObject, signal_name::Compat.String)
   obj_class = Gtk.GLib.G_OBJECT_CLASS_TYPE(obj)
   signal_id = ccall(
-    (:g_signal_lookup, Gtk.GLib.libgobject),
+    (:g_signal_lookup, Gtk.libgobject),
     Cuint,
-    (Ptr{Int8}, Gtk.GLib.GType),
+    (Ptr{Int8}, Gtk.GType),
     signal_name,
     obj_class)
   result = Ref{GSignalQuery}()
   ccall(
-    (:g_signal_query, Gtk.GLib.libgobject), 
+    (:g_signal_query, Gtk.libgobject), 
     Void, 
     (Cuint, Ptr{GSignalQuery}), 
     signal_id, 
@@ -85,7 +85,7 @@ function connectSignalsCFunction(
   end
   handler = userdata.handlers[handler_name]
 
-  object = Gtk.GLib.GObject(object_ptr)
+  object = GObject(object_ptr)
   signal_name = unsafe_string(signal_name_ptr)
   signal_info = query_signal(object, signal_name)
   if connect_object_ptr == C_NULL
@@ -106,8 +106,8 @@ function connectSignalsCFunction(
   else
     # Connect the objects directly
     argument_array = copy(signal_info.parameter_types)
-    unshift!(argument_array, Ptr{Gtk.GObject})
-    push!(argument_array, Ptr{Gtk.GObject})
+    unshift!(argument_array, Ptr{GObject})
+    push!(argument_array, Ptr{GObject})
     argument_types = tuple(argument_array...)
     cptr = C_NULL
     try
@@ -116,10 +116,10 @@ function connectSignalsCFunction(
           (:g_signal_connect_object, Gtk.libgtk),
           Culong,
           (
-            Ptr{Gtk.GLib.GObject}, 
+            Ptr{GObject}, 
             Ptr{UInt8}, 
             Ptr{Void}, 
-            Ptr{Gtk.GLib.GObject}, 
+            Ptr{GObject}, 
             Gtk.GEnum),
           object_ptr,
           signal_name_ptr,
@@ -144,17 +144,17 @@ function connectSignals(
       connectSignalsCFunction, 
       Void, 
       (
-          Ptr{Gtk.GLib.GObject}, 
-          Ptr{Gtk.GLib.GObject},
+          Ptr{GObject}, 
+          Ptr{GObject},
           Ptr{UInt8},
           Ptr{UInt8},
-          Ptr{Gtk.GLib.GObject},
+          Ptr{GObject},
           Int,
           Ptr{Void}))
   ccall(
       (:gtk_builder_connect_signals_full, Gtk.libgtk),
       Void,
-      (Ptr{Gtk.GLib.GObject}, Ptr{Void}, Ptr{Void}), 
+      (Ptr{GObject}, Ptr{Void}, Ptr{Void}), 
       built, 
       connector,
       pointer_from_objref(SignalConnectionData(handlers, userdata, wpipe)))
