@@ -92,6 +92,33 @@ macro GtkBuilderAid(args...)
         # Just grab the function's name
         fcall = entry.args[1]
         fname = fcall.args[1]
+        body = entry.args[2]
+        if length(fcall.args) >= 3 && isa(fcall.args[end], Symbol)
+          # Convert the last argument to a GObject if it's a gpointer
+          last_arg = fcall.args[end]
+          new_last_arg = symbol(last_arg, "_ptr")
+          fcall.args[end] = new_last_arg
+          prepend!(body.args, (quote 
+            $last_arg = if isa($new_last_arg, Ptr{GObject})
+              GObject($new_last_arg)
+            else
+              $new_last_arg
+            end
+          end).args)
+        end
+        if length(fcall.args) >= 2 && isa(fcall.args[2], Symbol)
+          # Convert the first argument to a GObject if it's a gpointer
+          first_arg = fcall.args[2]
+          new_first_arg = symbol(first_arg, "_ptr")
+          fcall.args[2] = new_first_arg
+          prepend!(body.args, (quote 
+            $first_arg = if isa($new_first_arg, Ptr{GObject})
+              GObject($new_first_arg)
+            else
+              $new_first_arg
+            end
+          end).args)
+        end
         # Can support multiple function methods now
         push!(callbacks, fname)
       end

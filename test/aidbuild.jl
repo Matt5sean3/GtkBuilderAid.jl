@@ -75,14 +75,14 @@ end
 function quit_app(
     widget, 
     user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (GObject, ), user_info)
   return nothing
 end
 
 function close_window(
     widget, 
     window_ptr)
-  window = Gtk.GLib.GObject(window_ptr)
+  window = GObject(window_ptr)
   destroy(window)
   return nothing
 end
@@ -106,7 +106,7 @@ end
 function quit_app(
     widget,
     user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (GObject, ), user_info)
   return nothing
 end
 
@@ -135,7 +135,7 @@ end
 function quit_app(
     widget, 
     user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info[1])
+  ccall((:g_application_quit, Gtk.libgtk), Void, (GObject, ), user_info[1])
   return nothing
 end
 
@@ -154,7 +154,7 @@ end
 function close_window(
     widget,
     window_ptr)
-  window = Gtk.GLib.GObject(window_ptr)
+  window = GObject(window_ptr)
   destroy(window)
   return nothing
 end
@@ -175,7 +175,7 @@ build_nothing()
 function close_window(
     widget,
     window)
-  window = Gtk.GLib.GObject(window)
+  window = GObject(window)
   destroy(window)
   return nothing
 end
@@ -199,7 +199,7 @@ test_macro_throws(ErrorException, quote
 function close_window(
     widget,
     window_ptr)
-  window = Gtk.GLib.GObject(window_ptr)
+  window = GObject(window_ptr)
   destroy(window)
   return nothing
 end
@@ -212,7 +212,7 @@ expanding_builder = @GtkBuilderAid begin
 @guarded function close_window(
     widget,
     window_ptr)
-  window = Gtk.GLib.GObject(window_ptr)
+  window = GObject(window_ptr)
   destroy(window)
   return nothing::Void
 end
@@ -232,7 +232,7 @@ shorthand_builder = @GtkBuilderAid begin
 close_window(
     widget,
     window_ptr) = begin
-  window = Gtk.GLib.GObject(window_ptr)
+  window = GObject(window_ptr)
   destroy(window)
   return nothing::Void
 end
@@ -279,7 +279,7 @@ function draw_brush(
   ccall(
       (:gtk_widget_queue_draw_area, Gtk.libgtk),
       Void,
-      (Ptr{Gtk.GObject}, Cint, Cint, Cint, Cint),
+      (Ptr{GObject}, Cint, Cint, Cint, Cint),
       canvas,
       px,
       py,
@@ -294,13 +294,13 @@ end
     configure_event,
     userdata)
   destroy(userdata.surface)
-  canvas = Gtk.GObject(canvas_ptr)
+  canvas = GObject(canvas_ptr)
   w = width(canvas)
   h = height(canvas)
   userdata.surface = CairoSurface(
     ccall((:gdk_window_create_similar_surface, Gtk.libgtk),
       Ptr{Void},
-      (Ptr{Void}, Gtk.GLib.GEnum, Cint, Cint),
+      (Ptr{Void}, Gtk.GEnum, Cint, Cint),
       Gtk.gdk_window(canvas),
       Cairo.CONTENT_COLOR_ALPHA,
       w,
