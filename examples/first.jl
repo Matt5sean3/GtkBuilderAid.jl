@@ -20,7 +20,7 @@ end
   ccall(
       (:g_application_quit, Gtk.libgtk), 
       Void, 
-      (Ptr{Gtk.GLib.GObject}, ), 
+      (Ptr{GObject}, ), 
       user_info)
   return nothing
 end
@@ -28,7 +28,7 @@ end
 @guarded function close_window(
     widget, 
     window)
-  destroy(Gtk.GObject(window))
+  destroy(window)
   return nothing
 end
 
@@ -45,5 +45,6 @@ end
 
 signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
 
+println("Starting App")
 run(example_app)
 

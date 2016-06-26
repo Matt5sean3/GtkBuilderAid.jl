@@ -25,14 +25,13 @@ end
 @guarded function quit_app(
     widget,
     user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), user_info)
   return nothing
 end
 
 @guarded function close_window(
     widget,
-    window_ptr)
-  window = convert(Gtk.GObject, window_ptr)
+    window)
   destroy(window)
   return nothing
 end
@@ -75,7 +74,7 @@ This is a shorthand for using a tuple as the user data type. This directive foll
 
 ### Glade User data
 
-In cases where the user data is set in glade, the user data type will be a pointer to a `GObject`. In the code block above this is demonstrated with the `close_window` function which will receive a pointer to the window object as its user data argument.
+In cases where the user data is set in glade, the user data type will be a `GObject`. In the code block above this is demonstrated with the `close_window` function which will receive the window GObject as its user data argument.
 
 ## Runtime UI File Selection
 The example above could be rewritten slightly to enable selecting the either or both of the filename or userdata at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and userdata options are set for the macro the method allowing selection of the UI file and userdata will still be available. However, the types for the userdata must still be available at compile time.
@@ -95,14 +94,13 @@ end
 @guarded function quit_app(
     widget,
     user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (Gtk.GLib.GObject, ), user_info)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), user_info)
   return nothing::Void
 end
 
 @guarded function close_window(
     widget,
-    window_ptr::Ptr{Gtk.GLib.GObject})
-  window = convert(Gtk.GObject, window_ptr)
+    window)
   destroy(window)
   return nothing::Void
 end
@@ -132,10 +130,6 @@ Some macros at the first layer of the block processed by the `@GtkBuilderAid` ma
 ### Nested Blocks
 
 Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
-
-### Functions Defined Using Shorthand
-
-Functions defined using the equals operator will not be converted to cfunctions or be accessible as signal handlers. This will probably change in future versions so don't depend upon this behaviour.
 
 ### Multiple Dispatch
 

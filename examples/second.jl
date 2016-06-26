@@ -34,7 +34,7 @@ function draw_brush(
   ccall(
       (:gtk_widget_queue_draw_area, Gtk.libgtk),
       Void,
-      (Ptr{Gtk.GObject}, Cint, Cint, Cint, Cint),
+      (Ptr{GObject}, Cint, Cint, Cint, Cint),
       canvas,
       px,
       py,
@@ -45,11 +45,10 @@ end
 @GtkBuilderAid function_name(canvas_builder) begin
 
 @guarded Cint(0) function configure_event_cb(
-    canvas_ptr,
+    canvas,
     configure_event,
     userdata)
   destroy(userdata.surface)
-  canvas = Gtk.GObject(canvas_ptr)
   w = width(canvas)
   h = height(canvas)
   userdata.surface = CairoSurface(
@@ -137,8 +136,7 @@ end
 @guarded function activate_cb(
     app_ptr,
     userdata)
-
-  app = Gtk.GObject(app_ptr)
+  app = GObject(app_ptr)
   # Start with an under-defined cairo surface
   built = canvas_builder(
     "resources/second.ui", 
