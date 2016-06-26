@@ -39,14 +39,14 @@ end
 function query_signal(obj::GObject, signal_name::Compat.String)
   obj_class = Gtk.GLib.G_OBJECT_CLASS_TYPE(obj)
   signal_id = ccall(
-    (:g_signal_lookup, Gtk.libgobject),
+    (:g_signal_lookup, Gtk.GLib.libgobject),
     Cuint,
     (Ptr{Int8}, Gtk.GType),
     signal_name,
     obj_class)
   result = Ref{GSignalQuery}()
   ccall(
-    (:g_signal_query, Gtk.libgobject), 
+    (:g_signal_query, Gtk.GLib.libgobject), 
     Void, 
     (Cuint, Ptr{GSignalQuery}), 
     signal_id, 
