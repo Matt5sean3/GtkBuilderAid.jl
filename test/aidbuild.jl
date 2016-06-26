@@ -227,6 +227,26 @@ end
 end
 expanding_builder("resources/nothing.ui")
 
+shorthand_builder = @GtkBuilderAid begin
+
+close_window(
+    widget,
+    window_ptr) = begin
+  window = Gtk.GLib.GObject(window_ptr)
+  destroy(window)
+  return nothing::Void
+end
+
+click_ok(
+    widget,
+    user_info) = begin
+  println("OK clicked!")
+  return nothing::Void
+end
+
+end
+shorthand_builder("resources/nothing.ui")
+
 # Based off of GTK's Custom Drawing source code
 
 # Test using canvas features of DrawingArea

@@ -74,7 +74,7 @@ macro GtkBuilderAid(args...)
   line = 0
   for entry in user_block.args
 
-    if typeof(entry) <: Expr
+    if isa(entry, Expr)
       if entry.head == :line
         line = entry.args[1]
       end
@@ -94,6 +94,14 @@ macro GtkBuilderAid(args...)
         fname = fcall.args[1]
         # Can support multiple function methods now
         push!(callbacks, fname)
+      end
+
+      if entry.head == :(=)
+        left = entry.args[1]
+        if isa(left, Expr) && left.head == :call
+          fname = left.args[1]
+          push!(callbacks, fname)
+        end
       end
     end
   end

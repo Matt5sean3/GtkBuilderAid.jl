@@ -133,10 +133,6 @@ Some macros at the first layer of the block processed by the `@GtkBuilderAid` ma
 
 Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
 
-### Functions Defined Using Shorthand
-
-Functions defined using the equals operator will not be converted to cfunctions or be accessible as signal handlers. This will probably change in future versions so don't depend upon this behaviour.
-
 ### Multiple Dispatch
 
 Multiple dispatch should work correctly if multiple methods with different arguments are defined.
