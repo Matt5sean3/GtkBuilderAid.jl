@@ -1,7 +1,7 @@
 
-function arguments(call_expr::Expr, line = 0)
+function arguments(call_expr::Expr)
   if call_expr.head != :call
-    throw(InferenceException("Malformed function declaration, $line"))
+    throw(ErrorException("Malformed function declaration"))
   end
   call_expr = copy(call_expr)
   call_expr.head = :tuple

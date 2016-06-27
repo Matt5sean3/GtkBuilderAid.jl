@@ -9,19 +9,15 @@ builder = @GtkBuilderAid userdata(example_app) begin
 
 @guarded function click_ok(
     widget, 
-    user_info)
+    app)
   println("OK clicked!")
   return nothing
 end
 
 @guarded function quit_app(
     widget, 
-    user_info)
-  ccall(
-      (:g_application_quit, Gtk.libgtk), 
-      Void, 
-      (Ptr{GObject}, ), 
-      user_info)
+    app)
+  quit(app)
   return nothing
 end
 
@@ -36,7 +32,7 @@ end
 
 @guarded function activateApp(widget, userdata)
   app, builder = userdata
-  built = builder("resources/first.ui")
+  built = builder("resources/main.ui")
   win = Gtk.GAccessor.object(built, "main_window")
   push!(app, win)
   showall(win)
