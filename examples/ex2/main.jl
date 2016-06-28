@@ -116,7 +116,7 @@ end
   app = GObject(app_ptr)
   # Start with an under-defined cairo surface
   built = canvas_builder(
-    "resources/second.ui", 
+    "resources/main.ui", 
     CanvasData(CairoSurface(C_NULL, -1, -1)))
 
   w = Gtk.GAccessor.object(built, "drawing_window")

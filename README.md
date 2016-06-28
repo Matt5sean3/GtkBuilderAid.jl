@@ -58,7 +58,7 @@ All of the functions defined in the block starting with `builder = @GtkAidBuild`
 
 Note how the handler for `click_ok` is filled out directly as `click_ok` to match the code above.
 
-![Glade screenshot showing the application window](doc/resources/glade_example.png)
+![Glade screenshot showing the application window](examples/resources/glade_example.png)
 
 ## User Data Choices
 
