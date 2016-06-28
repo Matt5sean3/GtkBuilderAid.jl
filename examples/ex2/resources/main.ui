@@ -4,7 +4,6 @@
   <requires lib="gtk+" version="3.20"/>
   <object class="GtkWindow" id="drawing_window">
     <property name="can_focus">False</property>
-    <signal name="destroy" handler="close_window" swapped="no"/>
     <child>
       <object class="GtkDrawingArea" id="canvas">
         <property name="width_request">300</property>

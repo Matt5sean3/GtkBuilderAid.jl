@@ -14,7 +14,6 @@ function clear_surface(surf::CairoSurface)
   ctx = CairoContext(surf)
   set_source_rgb(ctx, 1, 1, 1)
   paint(ctx)
-  destroy(ctx)
 end
 
 function draw_brush(
@@ -22,15 +21,11 @@ function draw_brush(
     x,
     y,
     surf)
-
   px = Int(round(x - 3))
   py = Int(round(y - 3))
   ctx = CairoContext(surf)
   rectangle(ctx, px, py, 6, 6)
   fill(ctx)
-  destroy(ctx)
-
-  # Force the widget to update that part of the drawing
   reveal_area(canvas, px, py, 6, 6)
 end
 
@@ -40,7 +35,6 @@ end
     canvas,
     configure_event,
     userdata)
-  destroy(userdata.surface)
   userdata.surface = create_similar_surface(canvas, Gtk.GEnum(Cairo.CONTENT_COLOR_ALPHA))
   clear_surface(userdata.surface)
   return Cint(1)
@@ -100,14 +94,6 @@ end
 
 end
 
-# Destroy the cairo surface when the window closes
-@guarded function close_window(
-    window,
-    userdata)
-  destroy(userdata.surface)
-  return nothing
-end
-
 end
 
 @guarded function activate_cb(
@@ -128,10 +114,7 @@ end
 end
 
 app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.second", 0)
-
 signal_connect(activate_cb, app, "activate", Void, (), false)
-
 println("Start application")
-
 run(app)
 
