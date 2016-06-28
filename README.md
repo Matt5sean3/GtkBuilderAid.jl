@@ -151,3 +151,7 @@ Some macros at the first layer of the block processed by the `@GtkBuilderAid` ma
 
 Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
 
+### Function Calls
+
+Calling other functions that are defined within the signal handler block will result in an error in effectively every case. Any functionality that needs to be reused in multiple signals should instead be defined outside of the signal handler block. This behavior will not be changed for future versions.
+

@@ -87,9 +87,7 @@ macro GtkBuilderAid(args...)
           entry.args = expanded.args
         end
       end
-
       if entry.head == :function
-        # Just grab the function's name
         fcall = entry.args[1]
         fname = fcall.args[1]
         body = entry.args[2]
@@ -112,11 +110,7 @@ macro GtkBuilderAid(args...)
           new_first_arg = symbol(first_arg, "_ptr")
           fcall.args[2] = new_first_arg
           prepend!(body.args, (quote 
-            $first_arg = if isa($new_first_arg, Ptr{GObject})
-              GObject($new_first_arg)
-            else
-              $new_first_arg
-            end
+            $first_arg = GObject($new_first_arg)
           end).args)
         end
         # Can support multiple function methods now
@@ -135,8 +129,6 @@ macro GtkBuilderAid(args...)
 
   funcdata = Expr(:vect)
   for fname in callbacks
-    # [1] function symbol
-    # [2] function string name
     push!(funcdata.args, Expr(:tuple, 
         fname,
         string(fname)))
