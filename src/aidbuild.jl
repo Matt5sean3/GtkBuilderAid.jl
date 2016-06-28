@@ -170,12 +170,11 @@ macro GtkBuilderAid(args...)
 
   # For some reason scope seems to be killing me now
   if :function_name in directives
-    return funcdef
+    funcdef
   else
-    return quote
+    quote
       $funcdef
       $final_function_name
     end
   end
-
 end
