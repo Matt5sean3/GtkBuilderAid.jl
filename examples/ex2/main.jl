@@ -31,15 +31,7 @@ function draw_brush(
   destroy(ctx)
 
   # Force the widget to update that part of the drawing
-  ccall(
-      (:gtk_widget_queue_draw_area, Gtk.libgtk),
-      Void,
-      (Ptr{GObject}, Cint, Cint, Cint, Cint),
-      canvas,
-      px,
-      py,
-      6,
-      6)
+  reveal_area(canvas, px, py, 6, 6)
 end
 
 @GtkBuilderAid function_name(canvas_builder) begin
@@ -49,18 +41,7 @@ end
     configure_event,
     userdata)
   destroy(userdata.surface)
-  w = width(canvas)
-  h = height(canvas)
-  userdata.surface = CairoSurface(
-    ccall((:gdk_window_create_similar_surface, Gtk.libgtk),
-      Ptr{Void},
-      (Ptr{Void}, Gtk.GLib.GEnum, Cint, Cint),
-      Gtk.gdk_window(canvas),
-      Cairo.CONTENT_COLOR_ALPHA,
-      w,
-      h),
-    w,
-    h)
+  userdata.surface = create_similar_surface(canvas, Gtk.GEnum(Cairo.CONTENT_COLOR_ALPHA))
   clear_surface(userdata.surface)
   return Cint(1)
 end
@@ -93,11 +74,7 @@ end
     draw_brush(canvas, event.x, event.y, userdata.surface)
   elseif event.button == 3
     clear_surface(userdata.surface)
-    ccall(
-        (:gtk_widget_queue_draw, Gtk.libgtk),
-        Void,
-        (Ptr{GObject}, ), 
-        canvas)
+    reveal(canvas, false)
   end
 
   return Cint(1)

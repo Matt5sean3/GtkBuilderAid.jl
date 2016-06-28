@@ -1,4 +1,7 @@
 
+@test_throws MethodError GtkBuilderAid.arguments(5)
+@test_throws ErrorException GtkBuilderAid.arguments(:(hello::There))
+
 nullio = IOBuffer(0)
 
 function test_macro_throws(error_type, macroexpr)
@@ -53,36 +56,28 @@ empty_builder("resources/nothing.ui", test_app; wpipe=nullio)
 function click_ok()
 end
 
-function quit_app()
-end
-
 function close_window()
 end
 
 end
 poor_builder("resources/nothing.ui", test_app; wpipe=nullio)
 
-# Try out known userdata with 
+type InternalData
+  counter::Int
+end
+
 @GtkBuilderAid function_name(long_builder) begin
 
-function click_ok(
+@guarded function click_ok(
     widget, 
-    user_info)
-  println("OK clicked!")
+    data)
+  data.counter += 1
   return nothing
 end
 
-function quit_app(
+@guarded function close_window(
     widget, 
-    user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (GObject, ), user_info)
-  return nothing
-end
-
-function close_window(
-    widget, 
-    window_ptr)
-  window = GObject(window_ptr)
+    window)
   destroy(window)
   return nothing
 end
@@ -90,7 +85,41 @@ end
 end
 
 @test_throws MethodError long_builder()
-long_builder("resources/nothing.ui", test_app)
+
+type ActivateData
+  app
+  data
+end
+
+@guarded function activate_long_builder_app(app, data)
+  app = GObject(app)
+  built = long_builder("resources/nothing.ui", data)
+  w = Gtk.GAccessor.object(built, "main_window")
+  push!(app, w)
+  showall(w)
+
+  # Try triggering the clicked signal
+  ccall(
+    (:g_signal_emit_by_name, Gtk.libgtk), 
+    Void,
+    (Ptr{GObject}, Ptr{Int8}),
+    Gtk.GAccessor.object(built, "ok_button"), "clicked")
+
+  ccall(
+    (:g_signal_emit_by_name, Gtk.libgtk), 
+    Void,
+    (Ptr{GObject}, Ptr{Int8}),
+    Gtk.GAccessor.object(built, "cancel_button"), "clicked")
+
+  quit(app)
+  return nothing
+end
+
+data = InternalData(0)
+@test data.counter == 0
+signal_connect(activate_long_builder_app, test_app, "activate", Void, (), false, data)
+run(test_app)
+@test data.counter == 1
 
 # Show the expanded macro
 # Mostly check that this succeeds
@@ -100,13 +129,6 @@ function click_ok(
     widget,
     user_info)
   println("OK clicked!")
-  return nothing
-end
-
-function quit_app(
-    widget,
-    user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (GObject, ), user_info)
   return nothing
 end
 
@@ -123,19 +145,13 @@ builder()
 # Also check that the unbound form works
 builder("$(Pkg.dir("GtkBuilderAid"))/test/resources/nothing.ui")
 
+
 @GtkBuilderAid function_name(tuple_builder) userdata_tuple(test_app::GtkApplication) "resources/nothing.ui" begin
 
 function click_ok(
     widget,
     user_info)
   println("OK clicked!")
-  return nothing
-end
-
-function quit_app(
-    widget, 
-    user_info)
-  ccall((:g_application_quit, Gtk.libgtk), Void, (GObject, ), user_info[1])
   return nothing
 end
 
@@ -153,8 +169,7 @@ end
 
 function close_window(
     widget,
-    window_ptr)
-  window = GObject(window_ptr)
+    window)
   destroy(window)
   return nothing
 end
@@ -198,8 +213,7 @@ test_macro_throws(ErrorException, quote
 @GtkBuilderAid "resources/nonexistentfile.ui" begin
 function close_window(
     widget,
-    window_ptr)
-  window = GObject(window_ptr)
+    window)
   destroy(window)
   return nothing
 end
@@ -211,8 +225,7 @@ expanding_builder = @GtkBuilderAid begin
 
 @guarded function close_window(
     widget,
-    window_ptr)
-  window = GObject(window_ptr)
+    window)
   destroy(window)
   return nothing::Void
 end
@@ -231,8 +244,7 @@ shorthand_builder = @GtkBuilderAid begin
 
 close_window(
     widget,
-    window_ptr) = begin
-  window = GObject(window_ptr)
+    window) = begin
   destroy(window)
   return nothing::Void
 end
@@ -290,11 +302,10 @@ end
 @GtkBuilderAid function_name(canvas_builder) begin
 
 @guarded Cint(0) function configure_event_cb(
-    canvas_ptr,
+    canvas,
     configure_event,
     userdata)
   destroy(userdata.surface)
-  canvas = GObject(canvas_ptr)
   w = width(canvas)
   h = height(canvas)
   userdata.surface = CairoSurface(

@@ -123,6 +123,26 @@ run(example_app)
 
 ## Additional Considerations
 
+### Examples
+
+There are [examples available for examination](doc/README.md) in this package in the examples directory.
+
+### Helper Functions
+
+There are a few helper functions added to this package to make certain functionalities easier.
+
+#### `quit`
+
+This helper function adds a method to Julia's base `quit` function that takes a `GtkApplication` object as its first argument and call the C function `g_application_quit` on it. This is a very useful function for explicitly stopping a running application.
+
+#### `reveal_area`
+
+This is similar to calling Gtk.jl's `reveal` function but rather than causing the entire widget to be updated only a particular piece of the widget is revealed by this function. The first argument is a GtkWidget while the subsequent arguments are the x coordinate, y coordinate, width, and height of the top-left corner of the rectangular area to update. As an example, `reveal_area(w, 5, 10, 50, 60)` would update a 50 pixel by 60 pixel rectangle at 5 pixels from the left side of the widget and 10 pixels from the top of the widget.
+
+#### `create_similar_surface`
+
+This helper function creates a `CairoSurface` based on a realized widget with dimensions matching the widget. The first argument must be the widget for which the surface is created. A second optional argument, which is `Cairo.CONTENT_COLOR_ALPHA` by default, allows choosing the content type of the cairo surface.
+
 ### Macros
 
 Some macros at the first layer of the block processed by the `@GtkBuilderAid` macro are manually expanded during analysis of that block. The expansion will be kept and added to the list of signals in the case that the expanded expression is a function definition. Macros that don't result in function definitions will be left to expand as they would have otherwise. This expansion works well enough for simple macros such as the Gtk wrapper library's `@guarded` macro but has the potential to cause complications in more complex macros.
@@ -131,7 +151,7 @@ Some macros at the first layer of the block processed by the `@GtkBuilderAid` ma
 
 Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
 
-### Multiple Dispatch
+### Function Calls
 
-Multiple dispatch should work correctly if multiple methods with different arguments are defined.
+Calling other functions that are defined within the signal handler block will result in an error in effectively every case. Any functionality that needs to be reused in multiple signals should instead be defined outside of the signal handler block. This behavior will not be changed for future versions.
 

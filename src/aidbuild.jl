@@ -1,7 +1,7 @@
 
-function arguments(call_expr::Expr, line = 0)
+function arguments(call_expr::Expr)
   if call_expr.head != :call
-    throw(InferenceException("Malformed function declaration, $line"))
+    throw(ErrorException("Malformed function declaration"))
   end
   call_expr = copy(call_expr)
   call_expr.head = :tuple
@@ -87,9 +87,7 @@ macro GtkBuilderAid(args...)
           entry.args = expanded.args
         end
       end
-
       if entry.head == :function
-        # Just grab the function's name
         fcall = entry.args[1]
         fname = fcall.args[1]
         body = entry.args[2]
@@ -112,11 +110,7 @@ macro GtkBuilderAid(args...)
           new_first_arg = symbol(first_arg, "_ptr")
           fcall.args[2] = new_first_arg
           prepend!(body.args, (quote 
-            $first_arg = if isa($new_first_arg, Ptr{GObject})
-              GObject($new_first_arg)
-            else
-              $new_first_arg
-            end
+            $first_arg = GObject($new_first_arg)
           end).args)
         end
         # Can support multiple function methods now
@@ -135,8 +129,6 @@ macro GtkBuilderAid(args...)
 
   funcdata = Expr(:vect)
   for fname in callbacks
-    # [1] function symbol
-    # [2] function string name
     push!(funcdata.args, Expr(:tuple, 
         fname,
         string(fname)))
@@ -178,12 +170,11 @@ macro GtkBuilderAid(args...)
 
   # For some reason scope seems to be killing me now
   if :function_name in directives
-    return funcdef
+    funcdef
   else
-    return quote
+    quote
       $funcdef
       $final_function_name
     end
   end
-
 end

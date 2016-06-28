@@ -14,4 +14,5 @@ push!(dummy_button_box, @GtkButton("dummy"))
 destroy(dummy)
 
 include("aidbuild.jl")
+include("misc.jl")
 
