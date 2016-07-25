@@ -76,7 +76,7 @@ This is a shorthand for using a tuple as the user data type. This directive foll
 
 In cases where the user data is set in glade, the user data type will be a `GObject`. In the code block above this is demonstrated with the `close_window` function which will receive the window GObject as its user data argument.
 
-## Runtime UI File Selection
+## Runtime UI File Selection and GtkBuilderLeaf Object Usage
 The example above could be rewritten slightly to enable selecting the either or both of the filename or userdata at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and userdata options are set for the macro the method allowing selection of the UI file and userdata will still be available. However, the types for the userdata must still be available at compile time.
 
 ```julia
@@ -110,6 +110,51 @@ end
 @guarded function activateApp(widget, userdata)
   app, builder = userdata
   built = builder("$(Pkg.dir("*your_package*"))/resources/main.ui", (app, ))
+  win = Gtk.GAccessor.object(built, "main_window")
+  push!(app, win)
+  showall(win)
+  return nothing
+end
+
+signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
+
+run(example_app)
+```
+
+Further modifications allows the `GtkBuilder` object to be created external to the `builder` function. Simply pass the `GtkBuilderLeaf` that is the result of the `@GtkBuilder` macro as the first argument. This is especially useful if for some reason it becomes desirable to pass the GtkBuilder object itself as part of the userdata object.
+
+```julia
+example_app = @GtkApplication("com.github.example", 0)
+
+builder = @GtkBuilderAid begin
+
+@guarded function click_ok(
+    widget,
+    user_info)
+  println("OK clicked!")
+  return nothing::Void
+end
+
+@guarded function quit_app(
+    widget,
+    user_info)
+  ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), user_info)
+  return nothing::Void
+end
+
+@guarded function close_window(
+    widget,
+    window)
+  destroy(window)
+  return nothing::Void
+end
+
+end
+
+@guarded function activateApp(widget, userdata)
+  app, builder = userdata
+  built = @GtkBuilder(filename="$(Pkg.dir("*your_package*"))/resources/main.ui")
+  builder(built, (app, ))
   win = Gtk.GAccessor.object(built, "main_window")
   push!(app, win)
   showall(win)
