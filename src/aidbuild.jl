@@ -138,11 +138,6 @@ macro GtkBuilderAid(args...)
   block = quote
     $(esc(user_block))
 
-    if !isfile(filename)
-      throw(ErrorException("Provided UI file, $filename, does not exist"))
-    end
-    built = @GtkBuilder(filename=filename)
-    
     handlers = Dict{Compat.String, Function}()
     for func in $(esc(funcdata))
       handlers[string(func[2])] = func[1]
@@ -159,22 +154,19 @@ macro GtkBuilderAid(args...)
     final_function_name = generated_function_name
   end
 
-  filename_arg = :filename
+  filename_arg = :(filename::AbstractString)
   userdata_arg = Expr(:kw, :userdata, esc(userdata))
 
   if :filename in directives
     filename_arg = Expr(:kw, filename_arg, filename)
   end
 
-  funcdef = Expr(:function, :($final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR)), block)
+  funcdef = Expr(:function, :($final_function_name(built::GtkBuilderLeaf, $userdata_arg; wpipe=Base.STDERR)), block)
 
-  # For some reason scope seems to be killing me now
-  if :function_name in directives
-    funcdef
-  else
-    quote
-      $funcdef
-      $final_function_name
-    end
+  quote
+    $funcdef
+    $final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR) = 
+      $final_function_name(@GtkBuilder(filename=filename), userdata; wpipe=wpipe)
+    $final_function_name
   end
 end

@@ -259,6 +259,27 @@ end
 end
 shorthand_builder("resources/nothing.ui")
 
+# Test using an external builder
+external_builder = @GtkBuilderAid begin
+
+close_window(
+    widget,
+    window) = begin
+  destroy(window)
+  return nothing::Void
+end
+
+click_ok(
+    widget,
+    user_info) = begin
+  println("OK clicked!")
+  return nothing::Void
+end
+
+end
+builder_obj = @GtkBuilder(filename = "resources/nothing.ui")
+external_builder(builder_obj)
+
 # Based off of GTK's Custom Drawing source code
 
 # Test using canvas features of DrawingArea
