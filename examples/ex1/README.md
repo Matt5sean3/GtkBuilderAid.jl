@@ -6,7 +6,7 @@ This is a very basic example that demonstrates use of the `@GtkBuilderAid` macro
 
 ### `GtkApplicationWindow` widget
 
-This widget is the toplevel window for all the widgets in this example. It's an application window for improved compatibility with the `GtkApplication` object.
+This widget is the top-level window for all the widgets in this example. It's an application window for improved compatibility with the `GtkApplication` object.
 
 ### `GtkBox` widget
 
@@ -58,7 +58,7 @@ end
 
 ### `activateApp` handler
 
-This handler is used to perform startup actions for the application such as constructing the `GtkBuilder` and showing the window. This handler is connected in the code, not the UI file.
+This handler is used to perform start-up actions for the application such as constructing the `GtkBuilder` and showing the window. This handler is connected in the code, not the UI file.
 
 ```julia
 @guarded function activateApp(widget, userdata)
@@ -71,9 +71,9 @@ This handler is used to perform startup actions for the application such as cons
 end
 ```
 
-### Startup
+### Start-Up
 
-During startup the app is constructed with the identifier "io.github.matt5sean3.first", the activate handler is connected to the activate signal, and the app is started.
+During start-up the app is constructed with the identifier "io.github.matt5sean3.first", the activate handler is connected to the activate signal, and the app is started.
 
 ```julia
 example_app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)

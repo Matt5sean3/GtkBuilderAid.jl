@@ -6,7 +6,7 @@ This package's functionality is very narrowly to enable creating Gtk GUIs using 
 
 ## Example
 
-A simple example that matches up with the screenshotted GUI is displayed below.
+A simple example that matches up with the shown GUI is displayed below.
 
 ### Julia Code
 
@@ -52,7 +52,7 @@ signal_connect(activateApp, example_app, :activate, Void, (), false, (example_ap
 run(example_app)
 ```
 
-All of the functions defined in the block starting with `builder = @GtkAidBuild` will be accessable as handlers from within Glade.
+All of the functions defined in the block starting with `builder = @GtkAidBuild` will be accessible as handlers from within Glade.
 
 ### Glade Design
 
@@ -74,10 +74,10 @@ This is a shorthand for using a tuple as the user data type. This directive foll
 
 ### Glade User data
 
-In cases where the user data is set in glade, the user data type will be a `GObject`. In the code block above this is demonstrated with the `close_window` function which will receive the window GObject as its user data argument.
+In cases where the user data is set in glade, the user data type will be converted to the proper `GObject` type. In the code block above this is demonstrated with the `close_window` function which will receive a `GtkWindow` type as its user data argument.
 
 ## Runtime UI File Selection and GtkBuilderLeaf Object Usage
-The example above could be rewritten slightly to enable selecting the either or both of the filename or userdata at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and userdata options are set for the macro the method allowing selection of the UI file and userdata will still be available. However, the types for the userdata must still be available at compile time.
+The example above could be rewritten slightly to enable selecting the either or both of the filename or user data at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and user data options are set for the macro the method allowing selection of the UI file and user data will still be available. However, the types for the user data must still be available at compile time.
 
 ```julia
 example_app = @GtkApplication("com.github.example", 0)
@@ -121,7 +121,7 @@ signal_connect(activateApp, example_app, :activate, Void, (), false, (example_ap
 run(example_app)
 ```
 
-Further modifications allows the `GtkBuilder` object to be created external to the `builder` function. Simply pass the `GtkBuilderLeaf` that is the result of the `@GtkBuilder` macro as the first argument. This is especially useful if for some reason it becomes desirable to pass the GtkBuilder object itself as part of the userdata object.
+Further modifications allows the `GtkBuilder` object to be created external to the `builder` function. Simply pass the `GtkBuilderLeaf` that is the result of the `@GtkBuilder` macro as the first argument. This is especially useful if for some reason it becomes desirable to pass the GtkBuilder object itself as part of the user data object.
 
 ```julia
 example_app = @GtkApplication("com.github.example", 0)
@@ -168,6 +168,23 @@ run(example_app)
 
 ## Additional Considerations
 
+### Other Directives
+
+In addition to the user data and user data tuple directives there are further directives to modify how signal connection is performed.
+
+#### `function_name`
+
+Using this directive the name of the generated function can be provided directly. This saves on setting the generated function to a variable first. This takes
+ the form:
+
+```julia
+@GtkBuilderAid function_name(example_builder) begin
+
+# ... implementation ...
+
+end
+```
+
 ### Examples
 
 There are [examples available for examination](examples/README.md) in this package in the examples directory.
@@ -186,7 +203,7 @@ This is similar to calling Gtk.jl's `reveal` function but rather than causing th
 
 #### `create_similar_surface`
 
-This helper function creates a `CairoSurface` based on a realized widget with dimensions matching the widget. The first argument must be the widget for which the surface is created. A second optional argument, which is `Cairo.CONTENT_COLOR_ALPHA` by default, allows choosing the content type of the cairo surface.
+This helper function creates a `CairoSurface` based on a realized widget with dimensions matching the widget. The first argument must be the widget for which the surface is created. A second optional argument, which is `Cairo.CONTENT_COLOR_ALPHA` by default, allows choosing the content type of the Cairo surface.
 
 ### Macros
 
@@ -194,9 +211,9 @@ Some macros at the first layer of the block processed by the `@GtkBuilderAid` ma
 
 ### Nested Blocks
 
-Only functions defined at the level of the block within the macro will be converted to cfunctions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
+Only functions defined at the level of the block within the macro will be converted to C functions and be enabled as signals. This is partly to give a means to define functions that won't be used as functions.
 
 ### Function Calls
 
-Calling other functions that are defined within the signal handler block will result in an error in effectively every case. Any functionality that needs to be reused in multiple signals should instead be defined outside of the signal handler block. This behavior will not be changed for future versions.
+Calling other functions that are defined within the signal handler block will result in an error in effectively every case. Any functionality that needs to be reused in multiple signals should instead be defined outside of the signal handler block. This behaviour will not be changed for future versions.
 
