@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.20.0 -->
+<interface>
+  <requires lib="gtk+" version="3.20"/>
+  <object class="GtkListStore" id="text_line_store">
+    <columns>
+      <!-- column-name text_line -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkWindow" id="drag_drop_window">
+    <property name="can_focus">False</property>
+    <property name="default_width">640</property>
+    <property name="default_height">480</property>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkTreeView" id="text_view">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="model">text_line_store</property>
+            <signal name="drag-data-received" handler="text_view_drag_data_received_cb" swapped="no"/>
+            <signal name="drag-drop" handler="text_view_drag_drop_cb" swapped="no"/>
+            <signal name="realize" handler="text_view_realize_cb" swapped="no"/>
+            <child internal-child="selection">
+              <object class="GtkTreeSelection"/>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn">
+                <property name="title" translatable="yes">text</property>
+                <child>
+                  <object class="GtkCellRendererText" id="text_line"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="label" translatable="yes">close</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">True</property>
+            <signal name="clicked" handler="close_window" object="drag_drop_window" swapped="no"/>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

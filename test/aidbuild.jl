@@ -283,6 +283,67 @@ end
 builder_obj = @GtkBuilder(filename = "resources/nothing.ui")
 external_builder(builder_obj)
 
+# create a drag-drop interface
+# TODO complete this and use it as ex3
+immutable GtkTargetEntry
+  target::Ptr{UInt8}
+  flags::Cuint
+  info::Cuint
+end
+
+@GtkBuilderAid function_name(drag_drop_builder) begin
+
+@guarded function close_window(widget, window)
+  destroy(window)
+  nothing
+end
+
+@guarded function text_view_realize_cb(
+    widget,
+    userinfo)
+  # enable drag-drop stuff
+  targets = GtkTargetEntry[]
+  ccall(
+      (:gtk_drag_dest_set, Gtk.libgtk), 
+      Void,
+      (Ptr{GObject}, Cint, Ptr{GtkTargetEntry}, Cint, Cint),
+      widget,
+      Gtk.GConstants.GtkDestDefaults.DROP,
+      targets,
+      length(targets),
+      Gtk.GConstants.GdkDragAction.COPY)
+  nothing
+end
+
+@guarded function text_view_drag_data_received_cb(
+    widget, 
+    context,
+    x,
+    y,
+    data,
+    info,
+    time,
+    userinfo)
+  println("Drag Received")
+  nothing
+end
+
+@guarded Cint(0) function text_view_drag_drop_cb(
+    widget, 
+    context,
+    x,
+    y,
+    time,
+    userinfo)
+  # drag-drop check area
+  println("Drag Drop")
+  Cint(1)
+end
+
+end
+
+built = drag_drop_builder("resources/multiparameter.ui")
+
 # Based off of GTK's Custom Drawing source code
 
 # Test using canvas features of DrawingArea
