@@ -1,4 +1,41 @@
 
+export connect_signals
+
+"""
+```julia
+GSignalQuery(
+  signal_id::Cuint,
+  signal_name::Ptr{Int8},
+  itype::Gtk.GType,
+  signal_flags::Gtk.GEnum,
+  return_type::Gtk.GType,
+  n_params::Cuint,
+  param_types::Ptr{Gtk.GType})
+```
+For internal use.
+
+A structure holding information for a specific signal. It is filled in by the
+`g_signal_query` C function.
+
+See `struct GSignalQuery` in the GObject reference manual for more information
+* `signal_id` - The signal id of the signal being queried, or 0 if the signal 
+to be queried was unknown.
+* `signal_name` - The signal name.
+* `itype` - The interface/instance type that this signal can be emitted for.
+* `signal_flags` - The signal flags as passed in to the `g_signal_new` C
+function
+* `return_type` - The return type for user callbacks.
+* `n_params` - The number of parameters that user callbacks take.
+* `param_types` - The individual parameter types for user callbacks, note that
+the effective callback signature is:
+```julia
+callback(
+    data1::Ptr{GObject},
+    [param_name_1::ParamType1 ... param_name_n::ParamTypeN], 
+    data2::Ptr{GObject})::return_type
+```
+see also: SignalInfo, query_signal
+"""
 immutable GSignalQuery
   signal_id::Cuint
   signal_name::Ptr{Int8}
@@ -9,10 +46,25 @@ immutable GSignalQuery
   param_types::Ptr{Gtk.GType}
 end
 
+"""
+```julia
+SignalInfo(
+    itype::Type, 
+    return_type::Type, 
+    parameter_types::Array{Type, 1})
+```
+For internal use.
+
+A data type with information about a particular signal.
+* `itype` - The interface type that the signal is emitted for.
+* `return_type` - The return type for the user callbacks.
+* `parameter_types` - The parameter types for the user callbacks.
+see also: GSignalQuery, query_signal
+"""
 immutable SignalInfo
   itype::Type
   return_type::Type
-  parameter_types::Array{Type}
+  parameter_types::Array{Type, 1}
 end
 
 # Not all types were already covered so add in an auxiliary case
@@ -20,6 +72,15 @@ const more_types = Dict{Symbol, Type}(
   :GdkEvent => Ptr{Gtk.GdkEvent},
   :GdkEventButton => Ptr{Gtk.GdkEventButton});
 
+"""
+```julia
+gtype_to_jtype(t::Gtk.GType)::Type
+```
+For internal use.
+
+Maps from a `GType` object to the corresponding Julia object type.
+* `t` - The type to convert.
+"""
 function gtype_to_jtype(t::Gtk.GType)
   for (i, id) in enumerate(Gtk.GLib.fundamental_ids)
     if id == t
@@ -36,6 +97,17 @@ function gtype_to_jtype(t::Gtk.GType)
   return Ptr{Void}
 end
 
+"""
+```julia
+query_signal(obj::GObject, signal_name::Compat.String)::SignalInfo
+```
+For internal use.
+
+Looks up details about a particular signal on an object and provides it as 
+`SignalInfo`.
+* `obj` - The GObject to get the details of the signal for.
+* `signal_name` - The name of the signal to get details for
+"""
 function query_signal(obj::GObject, signal_name::Compat.String)
   obj_class = Gtk.GLib.G_OBJECT_CLASS_TYPE(obj)
   signal_id = ccall(
@@ -51,7 +123,7 @@ function query_signal(obj::GObject, signal_name::Compat.String)
     (Cuint, Ptr{GSignalQuery}), 
     signal_id, 
     result)
-  return SignalInfo(
+  SignalInfo(
     gtype_to_jtype(result[].itype),
     gtype_to_jtype(result[].return_type),
     [gtype_to_jtype(gtype) for gtype in unsafe_wrap(Array,
@@ -59,6 +131,13 @@ function query_signal(obj::GObject, signal_name::Compat.String)
       result[].n_params)])
 end
 
+"""
+```julia
+SignalConnectionData
+```
+For internal use.
+
+"""
 type SignalConnectionData
   handlers::Dict{Compat.String, Function}
   data
@@ -66,6 +145,16 @@ type SignalConnectionData
   passthrough::Function
 end
 
+"""
+```julia
+PassthroughData{T, O, P}(
+  ret_type::Type{T},
+  object_type::Type{O},
+  func::Ptr{Void},
+  data::P)
+```
+For internal use.
+"""
 type PassthroughData{T, O, P}
   ret_type::Type{T}
   object_type::Type{O}
@@ -73,9 +162,24 @@ type PassthroughData{T, O, P}
   data::P
 end
 
-# A cfunction to configure connections
-# The cfunction version runs but the julia version doesn't
-function connectSignalsCFunction(
+"""
+```
+connect_signals_c_function(
+    builder,
+    object_ptr,
+    signal_name_ptr,
+    handler_name_ptr,
+    connect_object_ptr,
+    flags,
+    userdata_ptr)
+```
+For internal use.
+
+A compilable function for configuring signal connections. Passed in its 
+compiled form to the `gtk_builder_connect_signals_full` C function.
+The cfunction version runs but the julia version doesn't
+"""
+function connect_signals_c_function(
     builder, 
     object_ptr, 
     signal_name_ptr, 
@@ -126,14 +230,32 @@ function connectSignalsCFunction(
   nothing
 end
 
-function connectSignals(
+"""
+```julia
+connect_signals(
+    built::GtkBuilderLeaf,
+    handlers::Dict{Compat.String, Function}, 
+    userdata,
+    passthrough::Function;
+    wpipe=Base.STDERR)
+```
+Connects signals specified within a `GtkBuilder`. Internally calls
+C function `gtk_builder_connect_signals_full`. Contains lots of
+magic for connecting to functions.
+* `built` - A `GtkBuilder` that the signals are connected for.
+* `handlers` - A mapping between signal names and callbacks.
+* `userdata` - The user provided data to be passed to the callbacks.
+* `passthrough` - A generic function that covers requirements for passthrough
+functionality.
+"""
+function connect_signals(
     built::GtkBuilderLeaf, 
     handlers::Dict{Compat.String, Function}, 
     userdata,
     passthrough::Function;
     wpipe=Base.STDERR)
   connector = cfunction(
-      connectSignalsCFunction, 
+      connect_signals_c_function, 
       Void, 
       (
           Ptr{GObject}, 

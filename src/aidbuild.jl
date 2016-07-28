@@ -1,4 +1,12 @@
 
+"""
+```julia
+arguments(call_expr::Expr)
+```
+For internal use.
+
+Retrieves the argument expressions from a call expression.
+"""
 function arguments(call_expr::Expr)
   if call_expr.head != :call
     throw(ErrorException("Malformed function declaration"))
@@ -10,6 +18,12 @@ function arguments(call_expr::Expr)
 end
 
 """
+```julia
+@GtkBuilderAid directives()... begin
+  # ... implementation ...
+end
+```
+
 This macro is meant to make using glade with Julia as easy as working with 
 Glade in C is. From a staticly compiled language the function names are just
 pulled from a compiled file but that option isn't available in Julia, at least
@@ -153,7 +167,7 @@ macro GtkBuilderAid(args...)
       handlers[string(func[2])] = func[1]
     end
 
-    connectSignals(built, handlers, userdata, passthrough; wpipe=wpipe)
+    connect_signals(built, handlers, userdata, passthrough; wpipe=wpipe)
 
     return built
   end
