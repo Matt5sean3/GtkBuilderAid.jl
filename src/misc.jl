@@ -5,9 +5,6 @@ export reveal_area, create_similar_surface
 
 const suffix = "Leaf"
 
-# Strange that the GdkWindow is not considered a GType in Gtk.jl
-Gtk.@Gtype GdkWindow Gtk.libgdk gdk_window
-
 # Quit the Gtk application
 function quit(app::Gtk.GApplication)
   ccall((:g_application_quit, Gtk.libgio), Void, (Ptr{GObject}, ), app)
@@ -28,15 +25,15 @@ function reveal_area(
 end
 
 # Get the GdkWindow as a GObject
-window(widget::Gtk.GtkWidget) = GdkWindow(
-    ccall(
+window(widget::Gtk.GtkWidget) = 
+    GObject(ccall(
         (:gtk_widget_get_window, Gtk.libgtk), 
         Ptr{GObject}, 
         (Ptr{GObject}, ), 
         widget))
 
 function create_similar_surface(
-    w::GdkWindow,
+    w::GObject,
     content::Gtk.GEnum,
     width::Cint,
     height::Cint)
