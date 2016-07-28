@@ -13,7 +13,7 @@
     <property name="default_width">640</property>
     <property name="default_height">480</property>
     <child>
-      <object class="GtkBox">
+      <object class="GtkBox" id="drag_drop_window_box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
@@ -26,10 +26,10 @@
             <signal name="drag-drop" handler="text_view_drag_drop_cb" swapped="no"/>
             <signal name="realize" handler="text_view_realize_cb" swapped="no"/>
             <child internal-child="selection">
-              <object class="GtkTreeSelection"/>
+              <object class="GtkTreeSelection" id="text_view_selection"/>
             </child>
             <child>
-              <object class="GtkTreeViewColumn">
+              <object class="GtkTreeViewColumn" id="text_view_column">
                 <property name="title" translatable="yes">text</property>
                 <child>
                   <object class="GtkCellRendererText" id="text_line"/>
@@ -47,7 +47,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkButton">
+          <object class="GtkButton" id="close_button">
             <property name="label" translatable="yes">close</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
