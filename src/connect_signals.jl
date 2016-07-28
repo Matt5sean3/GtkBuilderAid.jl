@@ -63,6 +63,14 @@ type SignalConnectionData
   handlers::Dict{Compat.String, Function}
   data
   warn_pipe::IO
+  passthrough::Function
+end
+
+type PassthroughData{T, O, P}
+  ret_type::Type{T}
+  object_type::Type{O}
+  func::Ptr{Void}
+  data::P
 end
 
 # A cfunction to configure connections
@@ -84,61 +92,45 @@ function connectSignalsCFunction(
     return nothing
   end
   handler = userdata.handlers[handler_name]
+  passthrough = userdata.passthrough
 
   object = GObject(object_ptr)
   signal_name = unsafe_string(signal_name_ptr)
   signal_info = query_signal(object, signal_name)
-  if connect_object_ptr == C_NULL
-    # Use the provided 
-    try
-      signal_connect(
-          handler, 
-          object, 
-          signal_name, 
-          signal_info.return_type, 
-          (signal_info.parameter_types...), 
-          false, 
-          userdata.data)
-    catch err
-      warn(wpipe, "Signal connection failed; signal, $signal_name; handler, $handler_name")
-      warn(wpipe, err)
-    end
-  else
-    # Connect the objects directly
-    argument_array = copy(signal_info.parameter_types)
-    unshift!(argument_array, Ptr{GObject})
-    push!(argument_array, Ptr{GObject})
-    argument_types = tuple(argument_array...)
-    cptr = C_NULL
-    try
-      cptr = cfunction(handler, signal_info.return_type, argument_types)
-      ccall(
-          (:g_signal_connect_object, Gtk.libgtk),
-          Culong,
-          (
-            Ptr{GObject}, 
-            Ptr{UInt8}, 
-            Ptr{Void}, 
-            Ptr{GObject}, 
-            Gtk.GEnum),
-          object_ptr,
-          signal_name_ptr,
-          cptr,
-          connect_object_ptr,
-          flags)
-    catch err
-      warn(wpipe, "CFunction conversion failed; signal, $signal_name; handler, $handler_name")
-      warn(wpipe, err)
-    end
+
+  passed_data = (connect_object_ptr == C_NULL)? userdata.data : GObject(connect_object_ptr)
+  ptypes = tuple(Ref{typeof(object)}, signal_info.parameter_types..., Ref{typeof(passed_data)})
+  cptr = cfunction(
+      handler,
+      signal_info.return_type,
+      ptypes)
+  data = PassthroughData(signal_info.return_type, typeof(object), cptr, passed_data)
+  try
+    cptr = cfunction(
+        handler,
+        signal_info.return_type,
+        ptypes)
+    signal_connect(
+        passthrough, 
+        object, 
+        signal_name, 
+        signal_info.return_type, 
+        (signal_info.parameter_types...), 
+        false, 
+        data)
+  catch err
+    warn(wpipe, "Signal connection failed; signal, $signal_name; handler, $handler_name")
+    warn(wpipe, err)
   end
 
-  return nothing
+  nothing
 end
 
 function connectSignals(
     built::GtkBuilderLeaf, 
     handlers::Dict{Compat.String, Function}, 
-    userdata;
+    userdata,
+    passthrough::Function;
     wpipe=Base.STDERR)
   connector = cfunction(
       connectSignalsCFunction, 
@@ -157,5 +149,5 @@ function connectSignals(
       (Ptr{GObject}, Ptr{Void}, Ptr{Void}), 
       built, 
       connector,
-      pointer_from_objref(SignalConnectionData(handlers, userdata, wpipe)))
+      pointer_from_objref(SignalConnectionData(handlers, userdata, wpipe, passthrough)))
 end

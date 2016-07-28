@@ -70,6 +70,8 @@ macro GtkBuilderAid(args...)
 
   # Analogous to function declarations of a C header file
   callbacks = Set{Symbol}();
+  # Necessary for pass-through
+  passthroughs = Set{Int}()
 
   line = 0
   for entry in user_block.args
@@ -87,63 +89,71 @@ macro GtkBuilderAid(args...)
           entry.args = expanded.args
         end
       end
-      if entry.head == :function
+      if entry.head == :function && length(entry.args[1].args) >= 3
         fcall = entry.args[1]
         fname = fcall.args[1]
-        body = entry.args[2]
-        if length(fcall.args) >= 3 && isa(fcall.args[end], Symbol)
-          # Convert the last argument to a GObject if it's a gpointer
-          last_arg = fcall.args[end]
-          new_last_arg = symbol(last_arg, "_ptr")
-          fcall.args[end] = new_last_arg
-          prepend!(body.args, (quote 
-            $last_arg = if isa($new_last_arg, Ptr{GObject})
-              GObject($new_last_arg)
-            else
-              $new_last_arg
-            end
-          end).args)
-        end
-        if length(fcall.args) >= 2 && isa(fcall.args[2], Symbol)
-          # Convert the first argument to a GObject if it's a gpointer
-          first_arg = fcall.args[2]
-          new_first_arg = symbol(first_arg, "_ptr")
-          fcall.args[2] = new_first_arg
-          prepend!(body.args, (quote 
-            $first_arg = GObject($new_first_arg)
-          end).args)
-        end
-        # Can support multiple function methods now
         push!(callbacks, fname)
+        push!(passthroughs, length(fcall.args) - 1)
       end
 
       if entry.head == :(=)
         left = entry.args[1]
-        if isa(left, Expr) && left.head == :call
+        if isa(left, Expr) && left.head == :call && length(left.args) >= 3
           fname = left.args[1]
           push!(callbacks, fname)
+          push!(passthroughs, length(left.args) - 1)
         end
       end
     end
   end
 
+  # Extend the curly to get things by argument type
+  base_passthrough_decl = :(passthrough{T, O, P}(object, userdata::PassthroughData{T, O, P}))
+  base_passthrough_expr = :(ccall(userdata.func, T, (Ref{O}, Ref{P}), GObject(object), userdata.data))
+  passthrough_expr = quote
+    passthrough() = nothing
+  end
+  for passthrough in passthroughs 
+    new_passthrough_decl = deepcopy(base_passthrough_decl)
+    new_passthrough_expr = deepcopy(base_passthrough_expr)
+    
+    # passthrough{T, O, P, X1 ... XN}(object, x_1::X1 ... x_n::XN, userdata::PassthroughData{T, O, P}) = 
+    #   ccall(userdata.func, T, (O, X1 ... XN, P), GObject(object), x_1 ... x_n, GObject(userdata.data))
+    # Inserts additional arguments
+    for i in 1:passthrough - 2
+      var = symbol("x_", i)
+      typ = symbol("X", i)
+      insert!(new_passthrough_decl.args, 3, :($var::$typ))
+      insert!(new_passthrough_expr.args, 5, var)
+      push!(new_passthrough_decl.args[1].args, typ)
+      insert!(new_passthrough_expr.args[3].args, 2, typ)
+    end
+    # Provides types for the arguments
+
+    append!(passthrough_expr.args, (quote
+      $new_passthrough_decl = begin
+        $new_passthrough_expr
+      end
+    end).args)
+  end
+
   funcdata = Expr(:vect)
   for fname in callbacks
-    push!(funcdata.args, Expr(:tuple, 
-        fname,
-        string(fname)))
+    push!(funcdata.args, Expr(:tuple, fname, string(fname)))
   end
 
   # Escape the modified user block
   block = quote
     $(esc(user_block))
+    $passthrough_expr
+    handlers
 
     handlers = Dict{Compat.String, Function}()
     for func in $(esc(funcdata))
       handlers[string(func[2])] = func[1]
     end
 
-    connectSignals(built, handlers, userdata; wpipe=wpipe)
+    connectSignals(built, handlers, userdata, passthrough; wpipe=wpipe)
 
     return built
   end

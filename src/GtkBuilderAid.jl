@@ -1,4 +1,4 @@
-
+__precompile__()
 
 module GtkBuilderAid
 using Gtk

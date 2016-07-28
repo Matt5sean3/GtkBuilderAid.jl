@@ -28,7 +28,7 @@ function reveal_area(
 end
 
 # Get the GdkWindow as a GObject
-window(widget::Gtk.GtkWidget) = GObject(
+window(widget::Gtk.GtkWidget) = GdkWindow(
     ccall(
         (:gtk_widget_get_window, Gtk.libgtk), 
         Ptr{GObject}, 

@@ -4,6 +4,7 @@
 
 nullio = IOBuffer(0)
 
+
 function test_macro_throws(error_type, macroexpr)
   expansion = macroexpand(macroexpr)
   if expansion.head != :error
@@ -66,6 +67,7 @@ type InternalData
   counter::Int
 end
 
+println("BEFORE")
 @GtkBuilderAid function_name(long_builder) begin
 
 @guarded function click_ok(
@@ -94,6 +96,7 @@ end
 @guarded function activate_long_builder_app(app, data)
   app = GObject(app)
   built = long_builder("resources/nothing.ui", data)
+
   w = Gtk.GAccessor.object(built, "main_window")
   push!(app, w)
   showall(w)
