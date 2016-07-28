@@ -21,9 +21,6 @@ script:
   - xvfb-run julia -e 'Pkg.clone(pwd()); 
               using BinDeps;
               println(BinDeps.debug("Gtk"));
-              if VERSION >= v"0.5.0-";
-                Pkg.checkout("Gtk", "master");
-              end;
               Pkg.build("GtkBuilderAid"); 
               Pkg.test("GtkBuilderAid"; coverage=true)'
 
