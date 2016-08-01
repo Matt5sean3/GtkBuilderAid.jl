@@ -7,6 +7,10 @@ os:
 julia:
   - 0.4
   - release
+  - nightly
+matrix:
+  allow_failures:
+    - nightly
 notifications:
   email: false
 addons:

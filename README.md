@@ -4,6 +4,14 @@
 
 This package's functionality is very narrowly to enable creating Gtk GUIs using [Glade](https://glade.gnome.org/) and [Julia](http://julialang.org/) more simply than can be accomplished using only the [Julia interface to Gtk](https://github.com/JuliaLang/Gtk.jl). The main concept is to use the signal connection features of the GtkBuilder object as simply in Julia as they can be from C.
 
+## Installation
+
+This package can be installed by use of Julia's in-built package manager as the `GtkBuilderAid` package. As a result `Pkg.add` is usually sufficient to install this package:
+
+```julia
+Pkg.add("GtkBuilderAid")
+```
+
 ## Example
 
 A simple example that matches up with the shown GUI is displayed below.
