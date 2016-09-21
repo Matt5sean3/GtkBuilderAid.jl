@@ -161,7 +161,7 @@ macro GtkBuilderAid(args...)
     $(esc(user_block))
     $passthrough_expr
 
-    handlers = Dict{Compat.String, Function}()
+    handlers = Dict{String, Function}()
     for func in $(esc(funcdata))
       handlers[string(func[2])] = func[1]
     end
