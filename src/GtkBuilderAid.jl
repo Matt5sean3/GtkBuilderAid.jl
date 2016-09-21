@@ -3,7 +3,6 @@ __precompile__()
 module GtkBuilderAid
 using Gtk
 using Cairo
-using Compat
 
 export @GtkBuilderAid
 

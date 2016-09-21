@@ -99,7 +99,7 @@ end
 
 """
 ```julia
-query_signal(obj::GObject, signal_name::Compat.String)::SignalInfo
+query_signal(obj::GObject, signal_name::String)::SignalInfo
 ```
 For internal use.
 
@@ -108,7 +108,7 @@ Looks up details about a particular signal on an object and provides it as
 * `obj` - The GObject to get the details of the signal for.
 * `signal_name` - The name of the signal to get details for
 """
-function query_signal(obj::GObject, signal_name::Compat.String)
+function query_signal(obj::GObject, signal_name::String)
   obj_class = Gtk.GLib.G_OBJECT_CLASS_TYPE(obj)
   signal_id = ccall(
     (:g_signal_lookup, Gtk.GLib.libgobject),
@@ -139,7 +139,7 @@ For internal use.
 
 """
 type SignalConnectionData
-  handlers::Dict{Compat.String, Function}
+  handlers::Dict{String, Function}
   data
   warn_pipe::IO
   passthrough::Function
@@ -234,7 +234,7 @@ end
 ```julia
 connect_signals(
     built::GtkBuilderLeaf,
-    handlers::Dict{Compat.String, Function}, 
+    handlers::Dict{String, Function}, 
     userdata,
     passthrough::Function;
     wpipe=Base.STDERR)
@@ -250,7 +250,7 @@ functionality.
 """
 function connect_signals(
     built::GtkBuilderLeaf, 
-    handlers::Dict{Compat.String, Function}, 
+    handlers::Dict{String, Function}, 
     userdata,
     passthrough::Function;
     wpipe=Base.STDERR)
