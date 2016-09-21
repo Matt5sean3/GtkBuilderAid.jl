@@ -67,7 +67,6 @@ type InternalData
   counter::Int
 end
 
-println("BEFORE")
 @GtkBuilderAid function_name(long_builder) begin
 
 @guarded function click_ok(

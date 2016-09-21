@@ -135,8 +135,8 @@ macro GtkBuilderAid(args...)
     #   ccall(userdata.func, T, (O, X1 ... XN, P), GObject(object), x_1 ... x_n, GObject(userdata.data))
     # Inserts additional arguments
     for i in 1:passthrough - 2
-      var = symbol("x_", i)
-      typ = symbol("X", i)
+      var = Symbol("x_", i)
+      typ = Symbol("X", i)
       insert!(new_passthrough_decl.args, 3, :($var::$typ))
       insert!(new_passthrough_expr.args, 5, var)
       push!(new_passthrough_decl.args[1].args, typ)
@@ -160,7 +160,6 @@ macro GtkBuilderAid(args...)
   block = quote
     $(esc(user_block))
     $passthrough_expr
-    handlers
 
     handlers = Dict{Compat.String, Function}()
     for func in $(esc(funcdata))
