@@ -189,7 +189,7 @@ macro GtkBuilderAid(args...)
   quote
     $funcdef
     $final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR) = 
-      $final_function_name(@GtkBuilder(filename=filename), userdata; wpipe=wpipe)
+      $final_function_name(GtkBuilder(filename=filename), userdata; wpipe=wpipe)
     $final_function_name
   end
 end
