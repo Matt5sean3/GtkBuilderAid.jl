@@ -33,14 +33,10 @@ Type annotations are necessary for this case as the macro needs to compile the
 functions to cfunctions with minimal information.
 """
 macro GtkBuilderAid(args...)
-  if length(args) < 1
-    throw(ArgumentError("GtkBuilderAid macro requires at least one argument"))
-  end
+  length(args) < 1 && throw(ArgumentError("GtkBuilderAid macro requires at least one argument"))
 
   user_block = args[end]::Expr
-  if user_block.head != :block
-    throw(ArgumentError("The last argument to this macro must be a block"))
-  end
+  user_block.head != :block && throw(ArgumentError("The last argument to this macro must be a block"))
 
   directives = Set{Symbol}()
 
@@ -84,8 +80,6 @@ macro GtkBuilderAid(args...)
 
   # Analogous to function declarations of a C header file
   callbacks = Set{Symbol}();
-  # Necessary for pass-through
-  passthroughs = Set{Int}()
 
   line = 0
   for entry in user_block.args
@@ -107,7 +101,6 @@ macro GtkBuilderAid(args...)
         fcall = entry.args[1]
         fname = fcall.args[1]
         push!(callbacks, fname)
-        push!(passthroughs, length(fcall.args) - 1)
       end
 
       if entry.head == :(=)
@@ -115,40 +108,9 @@ macro GtkBuilderAid(args...)
         if isa(left, Expr) && left.head == :call && length(left.args) >= 3
           fname = left.args[1]
           push!(callbacks, fname)
-          push!(passthroughs, length(left.args) - 1)
         end
       end
     end
-  end
-
-  # Extend the curly to get things by argument type
-  base_passthrough_decl = :(passthrough{T, O, P}(object, userdata::PassthroughData{T, O, P}))
-  base_passthrough_expr = :(ccall(userdata.func, T, (Ref{O}, Ref{P}), GObject(object), userdata.data))
-  passthrough_expr = quote
-    passthrough() = nothing
-  end
-  for passthrough in passthroughs 
-    new_passthrough_decl = deepcopy(base_passthrough_decl)
-    new_passthrough_expr = deepcopy(base_passthrough_expr)
-    
-    # passthrough{T, O, P, X1 ... XN}(object, x_1::X1 ... x_n::XN, userdata::PassthroughData{T, O, P}) = 
-    #   ccall(userdata.func, T, (O, X1 ... XN, P), GObject(object), x_1 ... x_n, GObject(userdata.data))
-    # Inserts additional arguments
-    for i in 1:passthrough - 2
-      var = symbol("x_", i)
-      typ = symbol("X", i)
-      insert!(new_passthrough_decl.args, 3, :($var::$typ))
-      insert!(new_passthrough_expr.args, 5, var)
-      push!(new_passthrough_decl.args[1].args, typ)
-      insert!(new_passthrough_expr.args[3].args, 2, typ)
-    end
-    # Provides types for the arguments
-
-    append!(passthrough_expr.args, (quote
-      $new_passthrough_decl = begin
-        $new_passthrough_expr
-      end
-    end).args)
   end
 
   funcdata = Expr(:vect)
@@ -159,15 +121,13 @@ macro GtkBuilderAid(args...)
   # Escape the modified user block
   block = quote
     $(esc(user_block))
-    $passthrough_expr
-    handlers
 
-    handlers = Dict{Compat.String, Function}()
+    handlers = Dict{String, Function}()
     for func in $(esc(funcdata))
       handlers[string(func[2])] = func[1]
     end
 
-    connect_signals(built, handlers, userdata, passthrough; wpipe=wpipe)
+    connect_signals(built, handlers, userdata; wpipe=wpipe)
 
     return built
   end
@@ -190,7 +150,7 @@ macro GtkBuilderAid(args...)
   quote
     $funcdef
     $final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR) = 
-      $final_function_name(@GtkBuilder(filename=filename), userdata; wpipe=wpipe)
+      $final_function_name(GtkBuilder(filename=filename), userdata; wpipe=wpipe)
     $final_function_name
   end
 end

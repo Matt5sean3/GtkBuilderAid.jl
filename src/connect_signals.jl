@@ -99,7 +99,7 @@ end
 
 """
 ```julia
-query_signal(obj::GObject, signal_name::Compat.String)::SignalInfo
+query_signal(obj::GObject, signal_name::String)::SignalInfo
 ```
 For internal use.
 
@@ -108,7 +108,7 @@ Looks up details about a particular signal on an object and provides it as
 * `obj` - The GObject to get the details of the signal for.
 * `signal_name` - The name of the signal to get details for
 """
-function query_signal(obj::GObject, signal_name::Compat.String)
+function query_signal(obj::GObject, signal_name::String)
   obj_class = Gtk.GLib.G_OBJECT_CLASS_TYPE(obj)
   signal_id = ccall(
     (:g_signal_lookup, Gtk.GLib.libgobject),
@@ -139,27 +139,9 @@ For internal use.
 
 """
 type SignalConnectionData
-  handlers::Dict{Compat.String, Function}
+  handlers::Dict{String, Function}
   data
   warn_pipe::IO
-  passthrough::Function
-end
-
-"""
-```julia
-PassthroughData{T, O, P}(
-  ret_type::Type{T},
-  object_type::Type{O},
-  func::Ptr{Void},
-  data::P)
-```
-For internal use.
-"""
-type PassthroughData{T, O, P}
-  ret_type::Type{T}
-  object_type::Type{O}
-  func::Ptr{Void}
-  data::P
 end
 
 """
@@ -196,32 +178,21 @@ function connect_signals_c_function(
     return nothing
   end
   handler = userdata.handlers[handler_name]
-  passthrough = userdata.passthrough
 
   object = GObject(object_ptr)
   signal_name = unsafe_string(signal_name_ptr)
   signal_info = query_signal(object, signal_name)
 
   passed_data = (connect_object_ptr == C_NULL)? userdata.data : GObject(connect_object_ptr)
-  ptypes = tuple(Ref{typeof(object)}, signal_info.parameter_types..., Ref{typeof(passed_data)})
-  cptr = cfunction(
-      handler,
-      signal_info.return_type,
-      ptypes)
-  data = PassthroughData(signal_info.return_type, typeof(object), cptr, passed_data)
   try
-    cptr = cfunction(
-        handler,
-        signal_info.return_type,
-        ptypes)
     signal_connect(
-        passthrough, 
-        object, 
+        handler,
+        object,
         signal_name, 
-        signal_info.return_type, 
-        (signal_info.parameter_types...), 
-        false, 
-        data)
+        signal_info.return_type,
+        (signal_info.parameter_types...),
+        false,
+        passed_data)
   catch err
     warn(wpipe, "Signal connection failed; signal, $signal_name; handler, $handler_name")
     warn(wpipe, err)
@@ -234,25 +205,21 @@ end
 ```julia
 connect_signals(
     built::GtkBuilderLeaf,
-    handlers::Dict{Compat.String, Function}, 
-    userdata,
-    passthrough::Function;
+    handlers::Dict{String, Function}, 
+    userdata;
     wpipe=Base.STDERR)
 ```
 Connects signals specified within a `GtkBuilder`. Internally calls
-C function `gtk_builder_connect_signals_full`. Contains lots of
-magic for connecting to functions.
+C function `gtk_builder_connect_signals_full`. Mostly uses Gtk.jl's
+signal connection magic.
 * `built` - A `GtkBuilder` that the signals are connected for.
 * `handlers` - A mapping between signal names and callbacks.
 * `userdata` - The user provided data to be passed to the callbacks.
-* `passthrough` - A generic function that covers requirements for passthrough
-functionality.
 """
 function connect_signals(
     built::GtkBuilderLeaf, 
-    handlers::Dict{Compat.String, Function}, 
-    userdata,
-    passthrough::Function;
+    handlers::Dict{String, Function}, 
+    userdata;
     wpipe=Base.STDERR)
   connector = cfunction(
       connect_signals_c_function, 
@@ -269,7 +236,7 @@ function connect_signals(
       (:gtk_builder_connect_signals_full, Gtk.libgtk),
       Void,
       (Ptr{GObject}, Ptr{Void}, Ptr{Void}), 
-      built, 
+      built,
       connector,
-      pointer_from_objref(SignalConnectionData(handlers, userdata, wpipe, passthrough)))
+      pointer_from_objref(SignalConnectionData(handlers, userdata, wpipe)))
 end

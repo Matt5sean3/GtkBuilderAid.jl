@@ -30,7 +30,7 @@ end
   return nothing
 end
 
-example_app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
+example_app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
 signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
 
 println("Starting App")

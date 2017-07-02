@@ -68,7 +68,7 @@ end
     draw_brush(canvas, event.x, event.y, userdata.surface)
   elseif event.button == 3
     clear_surface(userdata.surface)
-    reveal(canvas, false)
+    reveal(GObject(canvas)::Gtk.GtkWidget, false)
   end
 
   return Cint(1)
@@ -113,7 +113,7 @@ end
   return nothing
 end
 
-app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.second", 0)
+app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.second", 0)
 signal_connect(activate_cb, app, "activate", Void, (), false)
 println("Start application")
 run(app)

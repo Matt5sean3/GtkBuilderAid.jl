@@ -34,6 +34,13 @@ reveal_area(
     Void, 
     (Ptr{GObject}, Cint, Cint, Cint, Cint), 
     canvas, x, y, width, height)
+reveal_area(
+    canvas::Ptr{GObject},
+    x::Integer,
+    y::Integer,
+    width::Integer,
+    height::Integer) =
+  reveal_area(GObject(canvas), x, y, width, height)
 
 """
 ```julia
@@ -81,4 +88,6 @@ function create_similar_surface(
 end
 create_similar_surface(w::Gtk.GtkWidget, content::Gtk.GEnum=Gtk.GEnum(Cairo.CONTENT_COLOR_ALPHA)) =
   create_similar_surface(window(w), content, width(w), height(w))
+create_similar_surface(w::Ptr{GObject}, content::Gtk.GEnum=Gtk.GEnum(Cairo.CONTENT_COLOR_ALPHA)) =
+  create_similar_surface(GObject(w), content)
 

@@ -43,13 +43,15 @@ test_macro_throws(ErrorException, quote
 end
 end)
 
-test_app = @GtkApplication("com.github.test_gtkbuilderaid", 0)
+test_app = GtkApplication("com.github.test_gtkbuilderaid", 0)
 
 # Check that an empty builder doesn't crash
 @GtkBuilderAid function_name(empty_builder) begin
 
 end
 empty_builder("resources/nothing.ui", test_app; wpipe=nullio)
+
+
 
 # Check that a poorly made builder doesn't crash
 @GtkBuilderAid function_name(poor_builder) begin
@@ -67,7 +69,6 @@ type InternalData
   counter::Int
 end
 
-println("BEFORE")
 @GtkBuilderAid function_name(long_builder) begin
 
 @guarded function click_ok(
@@ -280,8 +281,9 @@ click_ok(
 end
 
 end
-builder_obj = @GtkBuilder(filename = "resources/nothing.ui")
+builder_obj = GtkBuilder(filename = "resources/nothing.ui")
 external_builder(builder_obj)
+
 
 # create a drag-drop interface
 # TODO complete this and use it as ex3

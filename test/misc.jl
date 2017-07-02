@@ -2,8 +2,8 @@
 # quit needs to work or early tests will hang
 
 # Try out queue_draw_area
-da = Gtk.@GtkDrawingArea(ccall((:gtk_drawing_area_new, Gtk.libgtk), Ptr{GObject}, ()))
-w = @GtkWindow(da, "Test Window")
+da = Gtk.GtkDrawingArea(ccall((:gtk_drawing_area_new, Gtk.libgtk), Ptr{GObject}, ()))
+w = GtkWindow(da, "Test Window")
 @test isa(GtkBuilderAid.window(da), GObject)
 
 @test isa(create_similar_surface(da), CairoSurface)
