@@ -5,8 +5,11 @@ dist: trusty
 os:
   - linux
 julia:
-  - 0.4
-  - release
+  - 0.5
+  - nightly
+matrix:
+  allow_failures:
+    - julia: nightly
 notifications:
   email: false
 addons:
