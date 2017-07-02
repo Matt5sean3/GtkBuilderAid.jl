@@ -162,7 +162,7 @@ end
 The `GtkApplication` is created with the identity `io.github.matt5sean3.second` and has `activate_cb` connected to its `activate` signal. This application is then run.
 
 ```julia
-app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.second", 0)
+app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.second", 0)
 signal_connect(activate_cb, app, "activate", Void, (), false)
 println("Start application")
 run(app)

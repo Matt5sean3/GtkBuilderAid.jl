@@ -107,7 +107,7 @@ Outside of the wrapper, the application activate callback is defined to set ever
 ## Running the Application
 
 ```julia
-app = @GtkApplication("io.github.matt5sean3.GtkBuilderAid.fourth", 0)
+app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.fourth", 0)
 signal_connect(activate_cb, app, :activate, Void, (), false, ())
 
 println("Starting Application")

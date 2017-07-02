@@ -19,7 +19,7 @@ A simple example that matches up with the shown GUI is displayed below.
 ### Julia Code
 
 ```julia
-example_app = @GtkApplication("com.github.example", 0)
+example_app = GtkApplication("com.github.example", 0)
 
 builder = @GtkBuilderAid userdata(example_app::GtkApplication) "resources/main.ui" begin
 
@@ -60,7 +60,7 @@ signal_connect(activateApp, example_app, :activate, Void, (), false, (example_ap
 run(example_app)
 ```
 
-All of the functions defined in the block starting with `builder = @GtkAidBuild` will be accessible as handlers from within Glade.
+All of the functions defined in the block starting with `builder = @GtkBuilderAid` will be accessible as handlers from within Glade.
 
 ### Glade Design
 
@@ -88,7 +88,7 @@ In cases where the user data is set in glade, the user data type will be convert
 The example above could be rewritten slightly to enable selecting the either or both of the filename or user data at runtime instead of at compile time. Choosing the UI file will usually be preferable for the improved flexibility that it provides. Additionally, a name chosen at compile time cannot be computed, it can only be a string constant or the macro will ignore it. Even when the filename and user data options are set for the macro the method allowing selection of the UI file and user data will still be available. However, the types for the user data must still be available at compile time.
 
 ```julia
-example_app = @GtkApplication("com.github.example", 0)
+example_app = GtkApplication("com.github.example", 0)
 
 builder = @GtkBuilderAid begin
 
@@ -129,10 +129,10 @@ signal_connect(activateApp, example_app, :activate, Void, (), false, (example_ap
 run(example_app)
 ```
 
-Further modifications allows the `GtkBuilder` object to be created external to the `builder` function. Simply pass the `GtkBuilderLeaf` that is the result of the `@GtkBuilder` macro as the first argument. This is especially useful if for some reason it becomes desirable to pass the GtkBuilder object itself as part of the user data object.
+Further modifications allows the `GtkBuilder` object to be created external to the `builder` function. Simply pass the `GtkBuilderLeaf` as the first argument. This is especially useful if for some reason it becomes desirable to pass the GtkBuilder object itself as part of the user data object.
 
 ```julia
-example_app = @GtkApplication("com.github.example", 0)
+example_app = GtkApplication("com.github.example", 0)
 
 builder = @GtkBuilderAid begin
 
@@ -161,7 +161,7 @@ end
 
 @guarded function activateApp(widget, userdata)
   app, builder = userdata
-  built = @GtkBuilder(filename="$(Pkg.dir("*your_package*"))/resources/main.ui")
+  built = GtkBuilder(filename="$(Pkg.dir("*your_package*"))/resources/main.ui")
   builder(built, (app, ))
   win = Gtk.GAccessor.object(built, "main_window")
   push!(app, win)
