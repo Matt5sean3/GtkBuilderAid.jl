@@ -138,7 +138,7 @@ SignalConnectionData
 For internal use.
 
 """
-type SignalConnectionData
+mutable struct SignalConnectionData
   handlers::Dict{String, Function}
   data
   warn_pipe::IO

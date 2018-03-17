@@ -8,7 +8,7 @@ using Compose
 using Gadfly
 using GtkBuilderAid
 
-type PlotData
+mutable struct PlotData
   surface::CairoSurface
   plot
 end

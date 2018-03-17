@@ -5,7 +5,7 @@ using Cairo
 using GtkBuilderAid
 
 # Test using canvas features of DrawingArea
-type CanvasData
+mutable struct CanvasData
   surface::CairoSurface
 end
 
