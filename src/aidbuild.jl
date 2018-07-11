@@ -195,18 +195,17 @@ macro GtkBuilderAid(args...)
     filename_arg = Expr(:kw, filename_arg, filename)
   end
 
-  funcdef = Expr(:function, :($final_function_name(built::GtkBuilderLeaf, $userdata_arg; wpipe=Base.STDERR)), block)
-
   # Add the app creation section
   quick_start = if :quickstart in directives
     quote
       # Create the app
       app = GtkApplication($app_name, 0)
       @guarded function activateApp(widget, app)
-        userdata = QuickstartUserdata(app)
+        builder = GtkBuilder(filename=$filename)
+        userdata = QuickstartUserdata(app, builder, $(esc(userdata)))
         # Don't do auto-connect of data
-        builder = $final_function_name($filename)
-        win = Gtk.GAccessor.object($main_window)
+        $final_function_name(builder, userdata)
+        win = Gtk.GAccessor.object(builder, $main_window)
         # Quit the app when the window is destroyed
         signal_connect(win, "destroy") do window
           ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
@@ -228,6 +227,8 @@ macro GtkBuilderAid(args...)
       # Don't create the app
     end
   end
+
+  funcdef = Expr(:function, :($final_function_name(built::GtkBuilderLeaf, $userdata_arg; wpipe=Base.STDERR)), block)
 
   quote
     $funcdef
