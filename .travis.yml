@@ -21,6 +21,7 @@ addons:
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - xvfb-run julia -e 'Pkg.clone(pwd()); 
+              Pkg.add("BinDeps");
               using BinDeps;
               println(BinDeps.debug("Gtk"));
               Pkg.build("GtkBuilderAid"); 
