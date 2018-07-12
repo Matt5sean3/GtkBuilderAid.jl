@@ -33,15 +33,33 @@ end
 
 """
 ```julia
-AidData()
+GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Function})
 ```
+
+
 """
-mutable struct AidData
-  builder::GtkBuilder
+mutable struct GtkBuilderAidData
+  builder::Union{GtkBuilder, Void}
   handlers::Dict{String, Function}
+  userdata
+  wpipe::IO
 end
 
-# Break the original macro down to do less magic
+function (x::GtkBuilderAidData)(builder::Union{GtkBuilder, Void} = x.builder, userdata = x.userdata; wpipe::IO = x.wpipe)
+  if isa(builder, Void)
+    throw(MethodError("GtkBuilderAidData object must have builder to be callable without builder object"))
+  else
+    connect_signals(builder, x.handlers, userdata; wpipe = wpipe)
+  end
+  builder
+end
+
+function (x::GtkBuilderAidData)(builderFile::String, userdata = x.userdata; wpipe::IO = x.wpipe)
+  builder = GtkBuilder(filename = builderFile)
+  x(builder, userdata; wpipe = wpipe)
+  builder
+end
+
 """
 @GtkFunctionTable begin
   # ... callback functions ...
@@ -107,7 +125,6 @@ macro GtkFunctionTable(args...)
 
 end
 
-# TODO this macro is an incomprehensible mess, refactor it
 """
 ```julia
 @GtkBuilderAid directives()... begin
@@ -126,9 +143,9 @@ macro GtkBuilderAid(args...)
   user_block = args[end]::Expr
   user_block.head != :block && throw(ArgumentError("The last argument to this macro must be a block"))
 
-  directives = Set{Symbol}()
-
+  # The whole directives thing was a mistake in retrospect
   lastDirective = length(args) - 1
+  builder = nothing
   if length(args) >= 2 && isa(args[end - 1], AbstractString)
     lastDirective -= 1
     # Enables the pre-bound version
@@ -136,20 +153,19 @@ macro GtkBuilderAid(args...)
     if !isfile(filename)
       throw(ErrorException("Provided UI file, $filename, does not exist"))
     end
-    push!(directives, :filename)
+    builder = :(GtkBuilder(filename = $filename))
   end
 
+  quickstart = quote end
+
   userdata = ()
-  app_name = nothing
-  main_window = nothing
-  generated_function_name = :genned_function
+  final_function_name = :genned_function
   for directive in args[1:lastDirective]
     # Only support expression-style directives
     if typeof(directive) <: Expr && directive.head == :call
       # A function call style directive
-      push!(directives, directive.args[1])
       if directive.args[1] == :function_name
-        generated_function_name = directive.args[2]
+        final_function_name = esc(directive.args[2])
       end
 
       if directive.args[1] == :userdata
@@ -159,14 +175,42 @@ macro GtkBuilderAid(args...)
       if directive.args[1] == :userdata_tuple
         # Creates a tuple from the arguments
         # and uses that as the userinfo argument
-        push!(directives, :userdata)
         userdata = arguments(directive)
       end
 
       if directive.args[1] == :quickstart
         # Needs the app name
-        app_name = arguments(directive).args[1]
-        main_window = arguments(directive).args[2]
+        args = arguments(directive).args
+        app_name = args[1]
+        main_window = args[2]
+        filename = args[2]
+        userdata = args[3]
+        builder = :(GtkBuilder(filename = $filename))
+        quickstart = quote
+          # Create the app
+          app = GtkApplication($app_name, 0)
+          @guarded function activateApp(widget, app)
+            builder = $builder
+            userdata = QuickstartUserdata(app, builder, $(esc(userdata)))
+            # Don't do auto-connect of data
+            $final_function_name(builder, userdata)
+            win = Gtk.GAccessor.object(builder, $main_window)
+            # Quit the app when the window is destroyed
+            signal_connect(win, "destroy") do window
+              ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
+            end
+            # Connect the app
+            push!(app, win)
+            showall(win)
+            nothing
+          end
+          signal_connect(activateApp, app, :activate, Void, (), false, app)
+          Gtk.register(app)
+          # I forgot about this wonkiness, printing to stdout here is actually a necessary step
+          println(join(("Starting Application:", $app_name), " "))
+          run(app)
+          println("Application Completed!")
+        end
       end
 
     else
@@ -176,65 +220,12 @@ macro GtkBuilderAid(args...)
 
   block = quote
     handlers = @GtkFunctionTable $(esc(user_block))
-
-    connect_signals(built, handlers, userdata; wpipe=wpipe)
-
-    return built
+    GtkBuilderAidData($builder, handlers, $(esc(userdata)), Base.STDERR)
   end
-
-  if :function_name in directives
-    final_function_name = esc(generated_function_name)
-  else
-    final_function_name = generated_function_name
-  end
-
-  filename_arg = :(filename::AbstractString)
-  userdata_arg = Expr(:kw, :userdata, esc(userdata))
-
-  if :filename in directives
-    filename_arg = Expr(:kw, filename_arg, filename)
-  end
-
-  # Add the app creation section
-  quick_start = if :quickstart in directives
-    quote
-      # Create the app
-      app = GtkApplication($app_name, 0)
-      @guarded function activateApp(widget, app)
-        builder = GtkBuilder(filename=$filename)
-        userdata = QuickstartUserdata(app, builder, $(esc(userdata)))
-        # Don't do auto-connect of data
-        $final_function_name(builder, userdata)
-        win = Gtk.GAccessor.object(builder, $main_window)
-        # Quit the app when the window is destroyed
-        signal_connect(win, "destroy") do window
-          ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
-        end
-        # Connect the app
-        push!(app, win)
-        showall(win)
-        nothing
-      end
-      signal_connect(activateApp, app, :activate, Void, (), false, app)
-      Gtk.register(app)
-      # I forgot about this wonkiness, printing to stdout here is actually a necessary step
-      println(join(("Starting Application:", $app_name), " "))
-      run(app)
-      println("Application Completed!")
-    end
-  else
-    quote
-      # Don't create the app
-    end
-  end
-
-  funcdef = Expr(:function, :($final_function_name(built::GtkBuilderLeaf, $userdata_arg; wpipe=Base.STDERR)), block)
 
   quote
-    $funcdef
-    $final_function_name($filename_arg, $userdata_arg; wpipe=Base.STDERR) = 
-      $final_function_name(GtkBuilder(filename=filename), userdata; wpipe=wpipe)
-    $quick_start
+    $final_function_name = $block
+    $quickstart
     $final_function_name
   end
 end

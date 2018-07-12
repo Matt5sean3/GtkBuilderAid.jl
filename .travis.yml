@@ -29,6 +29,7 @@ script:
 
 after_success:
   - julia -e 'cd(Pkg.dir("GtkBuilderAid"));
+              using Pkg;
               Pkg.add("Coverage");
               using Coverage;
               Coveralls.submit(process_folder())'
