@@ -60,6 +60,35 @@ function (x::GtkBuilderAidData)(builderFile::String, userdata = x.userdata; wpip
   builder
 end
 
+function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builderFile::String, userdata = x.userdata)
+  quickstart(GtkBuilder(builderFile), appName, mainWindowId, userdata = x.userdata)
+end
+
+function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builder::Union{GtkBuilder, Void} = x.builder, userdata = x.userdata)
+  # Create the app
+  app = GtkApplication($app_name, 0)
+  @guarded function activateApp(widget, app)
+    x(builder, QuickstartUserdata(app, builder, appdata))
+
+    # Quit the app when the window is destroyed
+    win = Gtk.GAccessor.object(builder, mainWindowId)
+    signal_connect(win, "destroy") do window
+      ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
+    end
+
+    # Connect the app
+    push!(app, win)
+    showall(win)
+    nothing
+  end
+  signal_connect(activateApp, app, :activate, Void, (), false, app)
+  Gtk.register(app)
+  # I forgot about this wonkiness, printing to stdout here is actually a necessary step
+  println(join(("Starting Application:", $app_name), " "))
+  run(app)
+  println("Application Completed!")
+end
+
 """
 @GtkFunctionTable begin
   # ... callback functions ...
@@ -156,8 +185,6 @@ macro GtkBuilderAid(args...)
     builder = :(GtkBuilder(filename = $filename))
   end
 
-  quickstart = quote end
-
   userdata = ()
   final_function_name = :genned_function
   for directive in args[1:lastDirective]
@@ -178,41 +205,6 @@ macro GtkBuilderAid(args...)
         userdata = arguments(directive)
       end
 
-      if directive.args[1] == :quickstart
-        # Needs the app name
-        args = arguments(directive).args
-        app_name = args[1]
-        main_window = args[2]
-        filename = args[2]
-        userdata = args[3]
-        builder = :(GtkBuilder(filename = $filename))
-        quickstart = quote
-          # Create the app
-          app = GtkApplication($app_name, 0)
-          @guarded function activateApp(widget, app)
-            builder = $builder
-            userdata = QuickstartUserdata(app, builder, $(esc(userdata)))
-            # Don't do auto-connect of data
-            $final_function_name(builder, userdata)
-            win = Gtk.GAccessor.object(builder, $main_window)
-            # Quit the app when the window is destroyed
-            signal_connect(win, "destroy") do window
-              ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
-            end
-            # Connect the app
-            push!(app, win)
-            showall(win)
-            nothing
-          end
-          signal_connect(activateApp, app, :activate, Void, (), false, app)
-          Gtk.register(app)
-          # I forgot about this wonkiness, printing to stdout here is actually a necessary step
-          println(join(("Starting Application:", $app_name), " "))
-          run(app)
-          println("Application Completed!")
-        end
-      end
-
     else
       throw(ErrorException("Directives must be in the format of a function call"))
     end
@@ -225,8 +217,6 @@ macro GtkBuilderAid(args...)
 
   quote
     $final_function_name = $block
-    $quickstart
-    $final_function_name
   end
 end
 
