@@ -4,7 +4,7 @@ module GtkBuilderAid
 using Gtk
 using Cairo
 
-export @GtkBuilderAid, @GtkFunctionTable
+export @GtkBuilderAid, @GtkFunctionTable, quickstart
 
 include("connect_signals.jl")
 include("aidbuild.jl")

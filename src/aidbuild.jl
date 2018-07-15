@@ -34,6 +34,7 @@ end
 """
 ```julia
 GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Function})
+
 ```
 
 
@@ -45,6 +46,14 @@ mutable struct GtkBuilderAidData
   wpipe::IO
 end
 
+"""
+```julia
+aid(builder::Union{GtkBuilder, Void) = aid.builder, userdata = aid.userdata; wpipe::IO = aid.wpipe)
+```
+
+The callable form of GtkBuilderAidData
+
+"""
 function (x::GtkBuilderAidData)(builder::Union{GtkBuilder, Void} = x.builder, userdata = x.userdata; wpipe::IO = x.wpipe)
   if isa(builder, Void)
     throw(MethodError("GtkBuilderAidData object must have builder to be callable without builder object"))
@@ -61,20 +70,20 @@ function (x::GtkBuilderAidData)(builderFile::String, userdata = x.userdata; wpip
 end
 
 function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builderFile::String, userdata = x.userdata)
-  quickstart(GtkBuilder(builderFile), appName, mainWindowId, userdata = x.userdata)
+  quickstart(x, appName, mainWindowId, GtkBuilder(filename = builderFile), userdata)
 end
 
 function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builder::Union{GtkBuilder, Void} = x.builder, userdata = x.userdata)
   # Create the app
-  app = GtkApplication($app_name, 0)
+  app = GtkApplication(appName, 0)
   @guarded function activateApp(widget, app)
     x(builder, QuickstartUserdata(app, builder, appdata))
 
     # Quit the app when the window is destroyed
-    win = Gtk.GAccessor.object(builder, mainWindowId)
-    signal_connect(win, "destroy") do window
-      ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
-    end
+    # win = Gtk.GAccessor.object(builder, mainWindowId)
+    # signal_connect(win, "destroy") do window
+    #   ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
+    # end
 
     # Connect the app
     push!(app, win)
@@ -84,7 +93,7 @@ function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String,
   signal_connect(activateApp, app, :activate, Void, (), false, app)
   Gtk.register(app)
   # I forgot about this wonkiness, printing to stdout here is actually a necessary step
-  println(join(("Starting Application:", $app_name), " "))
+  println(join(("Starting Application:", appName), " "))
   run(app)
   println("Application Completed!")
 end
