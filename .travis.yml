@@ -20,17 +20,8 @@ addons:
 # uncomment the following lines to override the default test script
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - xvfb-run julia -e 'Pkg.clone(pwd()); 
-              Pkg.add("BinDeps");
-              using BinDeps;
-              println(BinDeps.debug("Gtk"));
-              Pkg.build("GtkBuilderAid"); 
-              Pkg.test("GtkBuilderAid"; coverage=true)'
+  - xvfb-run julia -e 'include("cibuild.jl")'
 
 after_success:
-  - julia -e 'cd(Pkg.dir("GtkBuilderAid"));
-              using Pkg;
-              Pkg.add("Coverage");
-              using Coverage;
-              Coveralls.submit(process_folder())'
+  - julia -e 'include("cicoverage.jl")'
 
