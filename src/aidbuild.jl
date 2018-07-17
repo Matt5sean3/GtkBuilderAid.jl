@@ -20,7 +20,7 @@ end
 
 """
 ```julia
-GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Function})
+GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Callback})
 
 ```
 
@@ -28,7 +28,7 @@ GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Function})
 """
 mutable struct GtkBuilderAidData
   builder::Union{GtkBuilder, Void}
-  handlers::Dict{String, Function}
+  handlers::Dict{String, Callback}
   userdata
   wpipe::IO
 end
@@ -152,7 +152,7 @@ macro GtkFunctionTable(args...)
   quote
     $(esc(user_block))
 
-    handlers = Dict{String, Function}()
+    handlers = Dict{String, Callback}()
     for func in $(esc(funcdata))
       handlers[string(func[2])] = func[1]
     end

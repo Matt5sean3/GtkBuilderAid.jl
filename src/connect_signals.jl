@@ -133,13 +133,27 @@ end
 
 """
 ```julia
+BoundFunction
+```
+A function paired with userdata. This is actually a very natural function to
+make considering the problems I've been dealing with.
+"""
+struct BoundFunction
+  func::Function
+  userdata
+end
+
+const Callback = Union{Function, BoundFunction};
+
+"""
+```julia
 SignalConnectionData
 ```
 For internal use.
 
 """
 mutable struct SignalConnectionData
-  handlers::Dict{String, Function}
+  handlers::Dict{String, Callback}
   data
   warn_pipe::IO
 end
@@ -177,13 +191,21 @@ function connect_signals_c_function(
     warn(wpipe, "Signal handler, $handler_name, could not be found")
     return nothing
   end
-  handler = userdata.handlers[handler_name]
+  callback = userdata.handlers[handler_name]
+  if isa(callback, BoundFunction)
+    # Use the bound user data
+    handler = callback.func
+    passed_data = callback.userdata
+  else
+    # Use the default user data or the connect_object_ptr
+    handler = callback
+    passed_data = (connect_object_ptr == C_NULL)? userdata.data : GObject(connect_object_ptr)
+  end
 
   object = GObject(object_ptr)
   signal_name = unsafe_string(signal_name_ptr)
   signal_info = query_signal(object, signal_name)
 
-  passed_data = (connect_object_ptr == C_NULL)? userdata.data : GObject(connect_object_ptr)
   try
     signal_connect(
         handler,
@@ -218,7 +240,7 @@ signal connection magic.
 """
 function connect_signals(
     built::GtkBuilderLeaf, 
-    handlers::Dict{String, Function}, 
+    handlers::Dict{String, Callback}, 
     userdata;
     wpipe=Base.STDERR)
   connector = cfunction(
