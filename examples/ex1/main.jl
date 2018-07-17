@@ -3,6 +3,8 @@
 using Gtk
 using GtkBuilderAid
 
+example_app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
+
 builder = @GtkBuilderAid userdata(example_app) begin
 
 @guarded function click_ok(
@@ -30,7 +32,6 @@ end
   return nothing
 end
 
-example_app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
 signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
 
 println("Starting App")

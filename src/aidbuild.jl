@@ -17,19 +17,6 @@ function arguments(call_expr::Expr)
   return call_expr
 end
 
-"""
-```julia
-QuickstartUserdata(app::GtkApplication, builder::GtkBuilder, userdata)
-```
-
-This type is used to provide the Gtk application and builder to applications
-created with the quickstart directive along with other user data.
-"""
-mutable struct QuickstartUserdata
-  app::GtkApplication
-  builder::GtkBuilder
-  userdata
-end
 
 """
 ```julia
@@ -44,6 +31,20 @@ mutable struct GtkBuilderAidData
   handlers::Dict{String, Function}
   userdata
   wpipe::IO
+end
+
+"""
+```julia
+QuickstartUserdata(app::GtkApplication, builder::GtkBuilder, userdata)
+```
+
+This type is used to provide the Gtk application and builder to applications
+created with the quickstart directive along with other user data.
+"""
+mutable struct QuickstartUserdata
+  builderAid::GtkBuilderAidData
+  app::GtkApplication
+  mainWindowId::String
 end
 
 """
@@ -73,24 +74,22 @@ function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String,
   quickstart(x, appName, mainWindowId, GtkBuilder(filename = builderFile), userdata)
 end
 
+# A helper callback function for application quickstart functionality
+@guarded function qsActivateApp(widget, qsdata)
+  qsdata.builderAid(qsdata.builderAid.builder, qsdata)
+  win = Gtk.GAccessor.object(qsdata.builderAid.builder, qsdata.mainWindowId)
+  # Connect the app
+  push!(qsdata.app, win)
+  showall(win)
+  nothing
+end
+
 function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builder::Union{GtkBuilder, Void} = x.builder, userdata = x.userdata)
   # Create the app
   app = GtkApplication(appName, 0)
-  @guarded function activateApp(widget, app)
-    x(builder, QuickstartUserdata(app, builder, appdata))
 
-    # Quit the app when the window is destroyed
-    # win = Gtk.GAccessor.object(builder, mainWindowId)
-    # signal_connect(win, "destroy") do window
-    #   ccall((:g_application_quit, Gtk.libgtk), Void, (Ptr{GObject}, ), app)
-    # end
-
-    # Connect the app
-    push!(app, win)
-    showall(win)
-    nothing
-  end
-  signal_connect(activateApp, app, :activate, Void, (), false, app)
+  qsdata = QuickstartUserdata(GtkBuilderAidData(builder, x.handlers, userdata, x.wpipe), app, mainWindowId)
+  signal_connect(qsActivateApp, app, :activate, Void, (), false, qsdata)
   Gtk.register(app)
   # I forgot about this wonkiness, printing to stdout here is actually a necessary step
   println(join(("Starting Application:", appName), " "))

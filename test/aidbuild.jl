@@ -484,3 +484,24 @@ canvas_builder("resources/draw.ui", CanvasData(CairoSurface(C_NULL, -1, -1)))
 
 # run(test_app)
 
+# Test quickapp functionality
+aid = @GtkBuilderAid begin
+
+  @guarded function increment(widget, qsdata)
+    qsdata.builderAid.userdata.counter += 1
+    nothing
+  end
+
+  @guarded function on_show(widget, qsdata)
+    quit(qsdata.app)
+    nothing
+  end
+
+end
+
+udata = InternalData(0)
+
+@assert udata.counter == 0
+quickstart(aid, "com.github.matt5sean3.gtkbuilderaid.test", "main", "resources/quickstart.ui", udata)
+@assert udata.counter == 1
+
