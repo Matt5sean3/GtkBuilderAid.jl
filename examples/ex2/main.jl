@@ -29,12 +29,13 @@ function draw_brush(
   reveal_area(canvas, px, py, 6, 6)
 end
 
-@GtkBuilderAid function_name(canvas_builder) begin
+ft = @GtkFunctionTable begin
 
 @guarded Cint(0) function configure_event_cb(
     canvas,
     configure_event,
-    userdata)
+    qsdata)
+  userdata = qsdata.userdata
   userdata.surface = create_similar_surface(canvas, Gtk.GEnum(Cairo.CONTENT_COLOR_ALPHA))
   clear_surface(userdata.surface)
   return Cint(1)
@@ -43,7 +44,8 @@ end
 @guarded Cint(1) function draw_cb(
     canvas,
     ctx_ptr,
-    userdata)
+    qsdata)
+  userdata = qsdata.userdata
 
   ctx = CairoContext(ctx_ptr)
 
@@ -55,7 +57,8 @@ end
 @guarded Cint(0) function button_press_event_cb(
     canvas,
     event_ptr,
-    userdata) 
+    qsdata) 
+  userdata = qsdata.userdata
 
   event = Gtk.GdkEvent(event_ptr)
 
@@ -77,7 +80,8 @@ end
 @guarded Cint(0) function motion_notify_event_cb(
     canvas,
     event_ptr,
-    userdata)
+    qsdata)
+  userdata = qsdata.userdata
 
   event = Gtk.GdkEvent(event_ptr)
 
@@ -96,25 +100,5 @@ end
 
 end
 
-@guarded function activate_cb(
-    app_ptr,
-    userdata)
-  app = GObject(app_ptr)
-  # Start with an under-defined cairo surface
-  built = canvas_builder(
-    "resources/main.ui", 
-    CanvasData(CairoSurface(C_NULL, -1, -1)))
-
-  w = Gtk.GAccessor.object(built, "drawing_window")
-
-  push!(app, w)
-  showall(w)
-
-  return nothing
-end
-
-app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.second", 0)
-signal_connect(activate_cb, app, "activate", Void, (), false)
-println("Start application")
-run(app)
+start_application(ft, "io.github.matt5sean3.GtkBuilderAid.second", "drawing_window", "resources/main.ui", CanvasData(CairoSurface(C_NULL, -1, -1)))
 

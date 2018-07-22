@@ -5,11 +5,11 @@ using GtkBuilderAid
 
 example_app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.first", 0)
 
-builder = @GtkBuilderAid userdata(example_app) begin
+ft = @GtkFunctionTable begin
 
 @guarded function click_ok(
     widget, 
-    app)
+    qsdata)
   println("OK clicked!")
   return nothing
 end
@@ -23,17 +23,5 @@ end
 
 end
 
-@guarded function activateApp(widget, userdata)
-  app, builder = userdata
-  built = builder("resources/main.ui")
-  win = Gtk.GAccessor.object(built, "main_window")
-  push!(app, win)
-  showall(win)
-  return nothing
-end
-
-signal_connect(activateApp, example_app, :activate, Void, (), false, (example_app, builder))
-
-println("Starting App")
-run(example_app)
+start_application(ft, "io.github.matt5sean3.GtkBuilderAid.first", "main_window", "resources/main.ui", nothing)
 

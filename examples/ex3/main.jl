@@ -20,9 +20,10 @@ function draw_backbuffer(area, udata)
     udata.plot)
 end
 
-@GtkBuilderAid function_name(canvas_builder) begin
+ft = @GtkFunctionTable begin
 
-  @guarded Cint(1) function plot_area_draw_cb(area, ctx_ptr, udata)
+  @guarded Cint(1) function plot_area_draw_cb(area, ctx_ptr, qsdata)
+    udata = qsdata.userdata
     ctx = CairoContext(ctx_ptr)
     set_source_surface(ctx, udata.surface)
     paint(ctx)
@@ -32,39 +33,27 @@ end
   @guarded Cint(0) function plot_area_configure_event_cb(
       area,
       configure_event,
-      udata)
+      qsdata)
     # redraw the plot
-    draw_backbuffer(area, udata)
+    draw_backbuffer(area, qsdata.userdata)
     Cint(1)
   end
 
   @guarded function plot_area_realize_cb(
       area,
-      udata)
-    draw_backbuffer(area, udata)
+      qsdata)
+    draw_backbuffer(area, qsdata.userdata)
     nothing
   end
 
 end
 
-@guarded function activate_cb(
-    app_ptr,
-    userdata)
-  app = GObject(app_ptr)
-  built = canvas_builder(
-    "resources/main.ui", 
+start_application(
+    ft,
+    "io.github.matt5sean3.GtkBuilderAid.third",
+    "main_window",
+    "resources/main.ui",
     PlotData(
-      CairoSurface(C_NULL, -1, -1),
-      plot(x=collect(1:10), y=rand(10), Geom.LineGeometry)))
-  win = GAccessor.object(built, "main_window")
-  push!(app, win) 
-  showall(win)
-  nothing
-end
-
-app = GtkApplication("io.github.matt5sean3.GtkBuilderAid.fourth", 0)
-signal_connect(activate_cb, app, :activate, Void, (), false, ())
-
-println("Starting Application")
-run(app)
+        CairoSurface(C_NULL, -1, -1),
+        plot(x=collect(1:10), y=rand(10), Geom.LineGeometry)))
 
