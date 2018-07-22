@@ -144,6 +144,7 @@ struct BoundFunction
 end
 
 const Callback = Union{Function, BoundFunction};
+const FunctionTable = Dict{String, Callback}
 
 """
 ```julia
@@ -153,7 +154,7 @@ For internal use.
 
 """
 mutable struct SignalConnectionData
-  handlers::Dict{String, Callback}
+  handlers::FunctionTable
   data
   warn_pipe::IO
 end
@@ -240,7 +241,7 @@ signal connection magic.
 """
 function connect_signals(
     built::GtkBuilderLeaf, 
-    handlers::Dict{String, Callback}, 
+    handlers::FunctionTable,
     userdata;
     wpipe=Base.STDERR)
   connector = cfunction(

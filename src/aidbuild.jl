@@ -20,7 +20,7 @@ end
 
 """
 ```julia
-GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Callback})
+GtkBuilderAidData(builder::GtkBuilder, handlers::FunctionTable)
 
 ```
 
@@ -28,23 +28,9 @@ GtkBuilderAidData(builder::GtkBuilder, handlers::Dict{String, Callback})
 """
 mutable struct GtkBuilderAidData
   builder::Union{GtkBuilder, Void}
-  handlers::Dict{String, Callback}
+  handlers::FunctionTable
   userdata
   wpipe::IO
-end
-
-"""
-```julia
-QuickstartUserdata(app::GtkApplication, builder::GtkBuilder, userdata)
-```
-
-This type is used to provide the Gtk application and builder to applications
-created with the quickstart directive along with other user data.
-"""
-mutable struct QuickstartUserdata
-  builderAid::GtkBuilderAidData
-  app::GtkApplication
-  mainWindowId::String
 end
 
 """
@@ -70,25 +56,36 @@ function (x::GtkBuilderAidData)(builderFile::String, userdata = x.userdata; wpip
   builder
 end
 
-function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builderFile::String, userdata = x.userdata)
-  quickstart(x, appName, mainWindowId, GtkBuilder(filename = builderFile), userdata)
+"""
+```julia
+ApplicationUserdata(app::GtkApplication, builder::GtkBuilder, userdata)
+```
+
+"""
+mutable struct ApplicationUserdata
+  builder::GtkBuilder
+  handlers::FunctionTable
+  app::GtkApplication
+  mainWindowId::String
+  userdata
+  wpipe::IO
 end
 
-# A helper callback function for application quickstart functionality
+# A helper callback function for application application start functionality
 @guarded function qsActivateApp(widget, qsdata)
-  qsdata.builderAid(qsdata.builderAid.builder, qsdata)
-  win = Gtk.GAccessor.object(qsdata.builderAid.builder, qsdata.mainWindowId)
-  # Connect the app
+  connect_signals(qsdata.builder, qsdata.handlers, qsdata; wpipe = qsdata.wpipe)
+  win = Gtk.GAccessor.object(qsdata.builder, qsdata.mainWindowId)
   push!(qsdata.app, win)
   showall(win)
   nothing
 end
 
-function quickstart(x::GtkBuilderAidData, appName::String, mainWindowId::String, builder::Union{GtkBuilder, Void} = x.builder, userdata = x.userdata)
-  # Create the app
-  app = GtkApplication(appName, 0)
+start_application(handlers::FunctionTable, appName::String, mainWindowId::String, builder::String, userdata; wpipe = Base.STDERR) =
+  start_application(handlers, appName, mainWindowId, GtkBuilder(filename = builder), userdata; wpipe = wpipe)
 
-  qsdata = QuickstartUserdata(GtkBuilderAidData(builder, x.handlers, userdata, x.wpipe), app, mainWindowId)
+function start_application(handlers::FunctionTable, appName::String, mainWindowId::String, builder::GtkBuilder, userdata; wpipe = Base.STDERR)
+  app = GtkApplication(appName, 0)
+  qsdata = ApplicationUserdata(builder, handlers, app, mainWindowId, userdata, wpipe)
   signal_connect(qsActivateApp, app, :activate, Void, (), false, qsdata)
   Gtk.register(app)
   # I forgot about this wonkiness, printing to stdout here is actually a necessary step
@@ -152,7 +149,7 @@ macro GtkFunctionTable(args...)
   quote
     $(esc(user_block))
 
-    handlers = Dict{String, Callback}()
+    handlers = FunctionTable()
     for func in $(esc(funcdata))
       handlers[string(func[2])] = func[1]
     end
