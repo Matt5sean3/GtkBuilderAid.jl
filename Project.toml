@@ -1,0 +1,7 @@
+name = "GtkBuilderAid"
+uuid = "0b772dc8-568e-4fa9-aa8a-c5f6e9ad50d7"
+authors = ["Matthew Balch <matbalch@vt.edu>"]
+version = "0.1.0"
+
+[deps]
+Gtk = "4c0ca9eb-093a-5379-98c5-f87ac0bbbf44"
